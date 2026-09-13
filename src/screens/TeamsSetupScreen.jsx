@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { getQuiz, saveQuiz, getGame } from '../utils/storage'
-import { createTeam, TEAM_COLORS, TEAM_ICONS } from '../models'
+import { createTeam, TEAM_COLORS, TEAM_ICONS, WILDCARD_INFO } from '../models'
 import ConfirmDialog from '../components/ConfirmDialog'
+
+const DEFAULT_WILDCARDS = { doble: 1, cincuenta: 1, cambiar: 1 }
 
 export default function TeamsSetupScreen({ quizId, onBack, onBackHome, onStartGame }) {
   const [quiz, setQuiz] = useState(() => getQuiz(quizId))
@@ -24,6 +26,11 @@ export default function TeamsSetupScreen({ quizId, onBack, onBackHome, onStartGa
 
   function updateSettings(patch) {
     setQuiz((q) => ({ ...q, settings: { ...q.settings, ...patch } }))
+  }
+
+  function updateWildcard(key, value) {
+    const current = quiz.settings.wildcards || DEFAULT_WILDCARDS
+    updateSettings({ wildcards: { ...current, [key]: Math.max(0, value) } })
   }
 
   function setCount(count) {
@@ -137,6 +144,27 @@ export default function TeamsSetupScreen({ quizId, onBack, onBackHome, onStartGa
             ? 'Las preguntas se reparten en las casillas del panel en un orden distinto cada partida.'
             : 'Las casillas del panel siguen el mismo orden en el que aparecen en el editor.'}
         </p>
+      </div>
+
+      <div className="card mb-3">
+        <h3>Comodines por equipo</h3>
+        <p className="muted">Cuántos tiene cada equipo al empezar (se gastan al usarlos, iguales para todos).</p>
+        <div className="field-row">
+          {Object.entries(WILDCARD_INFO).map(([key, info]) => (
+            <div className="field" key={key}>
+              <label>
+                {info.icon} {info.label}
+              </label>
+              <input
+                type="number"
+                min="0"
+                max="9"
+                value={(quiz.settings.wildcards || DEFAULT_WILDCARDS)[key]}
+                onChange={(e) => updateWildcard(key, Number(e.target.value))}
+              />
+            </div>
+          ))}
+        </div>
       </div>
 
       <div className="card mb-3">

@@ -176,6 +176,7 @@ export function buildDemoQuiz() {
       reboundPolicy: 'full',
       reboundFixedAmount: 20,
       reboundPercent: 20,
+      wildcards: { doble: 1, cincuenta: 1, cambiar: 1 },
     },
   }
 }

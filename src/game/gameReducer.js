@@ -36,6 +36,8 @@ export function gameReducer(state, action) {
         reboundCount: 0,
         pointsAwardedThisQuestion: 0,
         anyPointsAwarded: false,
+        doubleTeamId: null,
+        fiftyFiftyActive: false,
       }
       return next
     }
@@ -51,6 +53,8 @@ export function gameReducer(state, action) {
         reboundCount: 0,
         pointsAwardedThisQuestion: 0,
         anyPointsAwarded: false,
+        doubleTeamId: null,
+        fiftyFiftyActive: false,
       }
       return next
     }
@@ -68,6 +72,9 @@ export function gameReducer(state, action) {
       next.currentAnswering.answeringTeamId = teamId
       if (!next.currentAnswering.attemptedTeamIds.includes(teamId)) {
         next.currentAnswering.attemptedTeamIds.push(teamId)
+      }
+      if (next.currentAnswering.doubleTeamId && next.currentAnswering.doubleTeamId !== teamId) {
+        next.currentAnswering.doubleTeamId = null
       }
       return next
     }
@@ -91,17 +98,20 @@ export function gameReducer(state, action) {
       const next = cloneState(state)
       const teamIdx = findTeamIndex(next, teamId)
       if (teamIdx === -1) return state
+      const isDouble = !!(next.currentAnswering && next.currentAnswering.doubleTeamId === teamId)
+      const finalPoints = isDouble ? points * 2 : points
       const prevScore = next.teams[teamIdx].score
-      next.teams[teamIdx].score = prevScore + points
+      next.teams[teamIdx].score = prevScore + finalPoints
       if (next.currentAnswering) {
-        next.currentAnswering.pointsAwardedThisQuestion += points
+        next.currentAnswering.pointsAwardedThisQuestion += finalPoints
         next.currentAnswering.anyPointsAwarded = true
+        if (isDouble) next.currentAnswering.doubleTeamId = null
       }
       pushHistory(next, {
         type: 'AWARD_POINTS',
         questionId,
         teamId,
-        points,
+        points: finalPoints,
         kind,
         prevScore,
       })
@@ -121,9 +131,21 @@ export function gameReducer(state, action) {
     }
 
     case 'MARK_INCORRECT': {
-      const { questionId, teamId } = action
+      // doublePenalty: puntos a restar si el equipo tenía activo "doble o nada"
+      const { questionId, teamId, doublePenalty } = action
       const next = cloneState(state)
-      pushHistory(next, { type: 'MARK_INCORRECT', questionId, teamId })
+      let prevScore
+      if (doublePenalty) {
+        const teamIdx = findTeamIndex(next, teamId)
+        if (teamIdx !== -1) {
+          prevScore = next.teams[teamIdx].score
+          next.teams[teamIdx].score = prevScore - doublePenalty
+        }
+      }
+      if (next.currentAnswering && next.currentAnswering.doubleTeamId === teamId) {
+        next.currentAnswering.doubleTeamId = null
+      }
+      pushHistory(next, { type: 'MARK_INCORRECT', questionId, teamId, doublePenalty, prevScore })
       return next
     }
 
@@ -133,10 +155,60 @@ export function gameReducer(state, action) {
       if (!next.currentAnswering) return state
       next.currentAnswering.answeringTeamId = toTeamId
       next.currentAnswering.reboundCount += 1
+      next.currentAnswering.doubleTeamId = null
       if (!next.currentAnswering.attemptedTeamIds.includes(toTeamId)) {
         next.currentAnswering.attemptedTeamIds.push(toTeamId)
       }
       pushHistory(next, { type: 'REBOUND', toTeamId, questionId: next.currentQuestionId })
+      return next
+    }
+
+    case 'ACTIVATE_DOUBLE': {
+      // "Doble o nada": dobla los puntos si acierta, los pierde si falla.
+      const { teamId } = action
+      const next = cloneState(state)
+      if (!next.currentAnswering || next.currentAnswering.answeringTeamId !== teamId) return state
+      const teamIdx = findTeamIndex(next, teamId)
+      if (teamIdx === -1 || (next.teams[teamIdx].comodines?.doble || 0) <= 0) return state
+      next.teams[teamIdx].comodines.doble -= 1
+      next.currentAnswering.doubleTeamId = teamId
+      pushHistory(next, { type: 'ACTIVATE_DOUBLE', teamId, questionId: next.currentQuestionId })
+      return next
+    }
+
+    case 'USE_FIFTY_FIFTY': {
+      const { teamId } = action
+      const next = cloneState(state)
+      if (!next.currentAnswering) return state
+      const teamIdx = findTeamIndex(next, teamId)
+      if (teamIdx === -1 || (next.teams[teamIdx].comodines?.cincuenta || 0) <= 0) return state
+      next.teams[teamIdx].comodines.cincuenta -= 1
+      next.currentAnswering.fiftyFiftyActive = true
+      pushHistory(next, { type: 'USE_FIFTY_FIFTY', teamId, questionId: next.currentQuestionId })
+      return next
+    }
+
+    case 'SWAP_QUESTION': {
+      // "Cambiar pregunta": devuelve la pregunta actual al panel y abre otra al azar.
+      const { teamId, oldQuestionId, newQuestionId } = action
+      const next = cloneState(state)
+      const teamIdx = findTeamIndex(next, teamId)
+      if (teamIdx === -1 || (next.teams[teamIdx].comodines?.cambiar || 0) <= 0) return state
+      if (!next.questionsState[newQuestionId] || next.questionsState[newQuestionId].status !== 'disponible') return state
+      next.teams[teamIdx].comodines.cambiar -= 1
+      next.questionsState[oldQuestionId] = { status: 'disponible', respondidaPor: null, puntosOtorgados: 0 }
+      next.questionsState[newQuestionId] = { status: 'abierta', respondidaPor: null, puntosOtorgados: 0 }
+      next.currentQuestionId = newQuestionId
+      next.currentAnswering = {
+        answeringTeamId: teamId,
+        attemptedTeamIds: [teamId],
+        reboundCount: 0,
+        pointsAwardedThisQuestion: 0,
+        anyPointsAwarded: false,
+        doubleTeamId: null,
+        fiftyFiftyActive: false,
+      }
+      pushHistory(next, { type: 'SWAP_QUESTION', teamId, oldQuestionId, newQuestionId })
       return next
     }
 
@@ -194,6 +266,32 @@ export function gameReducer(state, action) {
         if (teamIdx !== -1) next.teams[teamIdx].score = last.prevScore
       } else if (last.type === 'CLOSE_QUESTION') {
         next.questionsState[last.questionId] = last.prevQState
+      } else if (last.type === 'MARK_INCORRECT' && last.doublePenalty && last.prevScore !== undefined) {
+        const teamIdx = findTeamIndex(next, last.teamId)
+        if (teamIdx !== -1) next.teams[teamIdx].score = last.prevScore
+      } else if (last.type === 'ACTIVATE_DOUBLE') {
+        const teamIdx = findTeamIndex(next, last.teamId)
+        if (teamIdx !== -1) next.teams[teamIdx].comodines.doble += 1
+        if (next.currentAnswering) next.currentAnswering.doubleTeamId = null
+      } else if (last.type === 'USE_FIFTY_FIFTY') {
+        const teamIdx = findTeamIndex(next, last.teamId)
+        if (teamIdx !== -1) next.teams[teamIdx].comodines.cincuenta += 1
+        if (next.currentAnswering) next.currentAnswering.fiftyFiftyActive = false
+      } else if (last.type === 'SWAP_QUESTION') {
+        const teamIdx = findTeamIndex(next, last.teamId)
+        if (teamIdx !== -1) next.teams[teamIdx].comodines.cambiar += 1
+        next.questionsState[last.oldQuestionId] = { status: 'abierta', respondidaPor: null, puntosOtorgados: 0 }
+        next.questionsState[last.newQuestionId] = { status: 'disponible', respondidaPor: null, puntosOtorgados: 0 }
+        next.currentQuestionId = last.oldQuestionId
+        next.currentAnswering = {
+          answeringTeamId: last.teamId,
+          attemptedTeamIds: [last.teamId],
+          reboundCount: 0,
+          pointsAwardedThisQuestion: 0,
+          anyPointsAwarded: false,
+          doubleTeamId: null,
+          fiftyFiftyActive: false,
+        }
       }
       return next
     }
@@ -206,7 +304,7 @@ export function gameReducer(state, action) {
 
     case 'RESTART_KEEP_TEAMS': {
       const next = cloneState(state)
-      next.teams = next.teams.map((t) => ({ ...t, score: 0 }))
+      next.teams = next.teams.map((t) => ({ ...t, score: 0, comodines: { ...(next.wildcardCounts || t.comodines) } }))
       next.questionsState = Object.fromEntries(
         Object.keys(next.questionsState).map((qid) => [qid, { status: 'disponible', respondidaPor: null, puntosOtorgados: 0 }])
       )

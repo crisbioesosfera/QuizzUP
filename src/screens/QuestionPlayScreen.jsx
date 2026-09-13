@@ -4,6 +4,7 @@ import Timer from '../components/Timer'
 import PartialPointsModal from '../components/PartialPointsModal'
 import ConfirmDialog from '../components/ConfirmDialog'
 import { sounds } from '../utils/sound'
+import { WILDCARD_INFO } from '../models'
 
 function computeEffectivePoints(basePoints, reboundCount, settings) {
   if (reboundCount === 0) return Math.round(basePoints)
@@ -24,6 +25,32 @@ export default function QuestionPlayScreen({ quiz, question, tileNumber, gameSta
   const availableForRebound = gameState.teams.filter((t) => !attempted.has(t.id))
   const reboundLimitReached = question.maximoRebotes > 0 && answering.reboundCount >= question.maximoRebotes
   const reboundDisabled = !question.permitirRebote || availableForRebound.length === 0 || reboundLimitReached
+
+  const comodines = answeringTeam?.comodines || { doble: 0, cincuenta: 0, cambiar: 0 }
+  const sinPuntuarAun = answering.pointsAwardedThisQuestion === 0
+  const incorrectCount = question.tipo === 'test' ? question.opciones.length - question.respuestasCorrectas.length : 0
+  const otrasDisponibles = quiz.questions.filter((q) => q.id !== question.id && gameState.questionsState[q.id]?.status === 'disponible')
+
+  const dobleDisabled = comodines.doble <= 0 || !!answering.doubleTeamId || !sinPuntuarAun
+  const cincuentaDisabled = comodines.cincuenta <= 0 || answering.fiftyFiftyActive || question.tipo !== 'test' || incorrectCount < 2
+  const cambiarDisabled = comodines.cambiar <= 0 || !sinPuntuarAun || otrasDisponibles.length === 0
+
+  function activateDouble() {
+    dispatch({ type: 'ACTIVATE_DOUBLE', teamId: answeringTeam.id })
+    sounds.click()
+  }
+
+  function useFiftyFifty() {
+    dispatch({ type: 'USE_FIFTY_FIFTY', teamId: answeringTeam.id })
+    sounds.click()
+  }
+
+  function handleSwapQuestion() {
+    const elegida = otrasDisponibles[Math.floor(Math.random() * otrasDisponibles.length)]
+    dispatch({ type: 'SWAP_QUESTION', teamId: answeringTeam.id, oldQuestionId: question.id, newQuestionId: elegida.id })
+    setRevealed(false)
+    sounds.open()
+  }
 
   function award(points, kind) {
     const effective = computeEffectivePoints(points, answering.reboundCount, quiz.settings)
@@ -48,7 +75,8 @@ export default function QuestionPlayScreen({ quiz, question, tileNumber, gameSta
   }
 
   function handleIncorrect() {
-    dispatch({ type: 'MARK_INCORRECT', questionId: question.id, teamId: answeringTeam.id })
+    const doublePenalty = answering.doubleTeamId === answeringTeam.id ? question.puntosMaximos : 0
+    dispatch({ type: 'MARK_INCORRECT', questionId: question.id, teamId: answeringTeam.id, doublePenalty })
     sounds.incorrect()
     // Encadena directamente el siguiente paso lógico: si se puede rebotar, se
     // ofrece a quién; si no queda a quién rebotar, se cierra la pregunta.
@@ -102,6 +130,7 @@ export default function QuestionPlayScreen({ quiz, question, tileNumber, gameSta
         style={{ background: answeringTeam?.color, color: '#111', alignSelf: 'center' }}
       >
         {answeringTeam?.icon} Responde: {answeringTeam?.name}
+        {answering.doubleTeamId === answeringTeam?.id && ' · 🎲 ¡DOBLE O NADA!'}
       </div>
 
       <div className="flex-gap mt-1" style={{ justifyContent: 'center' }}>
@@ -118,10 +147,23 @@ export default function QuestionPlayScreen({ quiz, question, tileNumber, gameSta
         ))}
       </div>
 
+      <div className="flex-gap mt-1" style={{ justifyContent: 'center' }}>
+        <span className="muted" style={{ alignSelf: 'center' }}>Comodines de {answeringTeam?.name}:</span>
+        <button className="btn btn-sm btn-warn" disabled={dobleDisabled} onClick={activateDouble}>
+          {WILDCARD_INFO.doble.icon} {WILDCARD_INFO.doble.label} ({comodines.doble})
+        </button>
+        <button className="btn btn-sm btn-info" disabled={cincuentaDisabled} onClick={useFiftyFifty}>
+          {WILDCARD_INFO.cincuenta.icon} {WILDCARD_INFO.cincuenta.label} ({comodines.cincuenta})
+        </button>
+        <button className="btn btn-sm" disabled={cambiarDisabled} onClick={handleSwapQuestion}>
+          {WILDCARD_INFO.cambiar.icon} {WILDCARD_INFO.cambiar.label} ({comodines.cambiar})
+        </button>
+      </div>
+
       <div className="question-body">
         <div className="question-statement">{question.enunciado}</div>
         {question.imagen && question.tipo !== 'imagen' && <img src={question.imagen} alt="" className="question-image" />}
-        <QuestionPlayer question={question} revealed={revealed} />
+        <QuestionPlayer question={question} revealed={revealed} fiftyFiftyActive={answering.fiftyFiftyActive} />
         {revealed && question.explicacion && (
           <div className="reveal-box">
             <strong>Explicación:</strong> {question.explicacion}

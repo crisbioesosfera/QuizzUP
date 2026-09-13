@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react'
 
-export default function QuestionPlayer({ question, revealed }) {
+export default function QuestionPlayer({ question, revealed, fiftyFiftyActive }) {
   switch (question.tipo) {
     case 'test':
-      return <TestPlayer question={question} revealed={revealed} />
+      return <TestPlayer question={question} revealed={revealed} fiftyFiftyActive={fiftyFiftyActive} />
     case 'vf':
       return <VfPlayer question={question} revealed={revealed} />
     case 'hueco':
@@ -33,11 +33,16 @@ function shuffle(arr, seed) {
 }
 
 // ---------- Tipo test ----------
-function TestPlayer({ question, revealed }) {
+function TestPlayer({ question, revealed, fiftyFiftyActive }) {
   const opciones = useMemo(() => {
-    if (!question.mezclar) return question.opciones
-    return shuffle(question.opciones, question.id.length + question.opciones.length)
-  }, [question])
+    let opts = question.mezclar ? shuffle(question.opciones, question.id.length + question.opciones.length) : question.opciones
+    if (fiftyFiftyActive) {
+      const incorrectas = opts.filter((o) => !question.respuestasCorrectas.includes(o.id))
+      const aOcultar = new Set(shuffle(incorrectas, question.id.length + 97).slice(0, Math.min(2, incorrectas.length)).map((o) => o.id))
+      opts = opts.filter((o) => !aOcultar.has(o.id))
+    }
+    return opts
+  }, [question, fiftyFiftyActive])
   return (
     <div className="options-grid">
       {opciones.map((o) => {

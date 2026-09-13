@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { WILDCARD_INFO } from '../models'
 
 export default function ScoreBoard({ gameState, dispatch, editable = true }) {
   const [editingId, setEditingId] = useState(null)
@@ -38,6 +39,13 @@ export default function ScoreBoard({ gameState, dispatch, editable = true }) {
             </div>
           )}
           <div className="team-score">{team.score}</div>
+          {team.comodines && (
+            <div className="muted" style={{ fontSize: '0.78rem' }}>
+              {Object.entries(WILDCARD_INFO)
+                .map(([key, info]) => `${info.icon}${team.comodines[key] ?? 0}`)
+                .join('  ')}
+            </div>
+          )}
           {editable && (
             <div className="score-adjust-row">
               <button className="icon-btn" onClick={() => dispatch({ type: 'ADJUST_SCORE', teamId: team.id, delta: -10 })}>-10</button>

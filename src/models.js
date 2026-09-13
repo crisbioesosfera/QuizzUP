@@ -36,8 +36,15 @@ export function createEmptyQuiz(name = 'Nuevo concurso') {
       reboundPolicy: 'full', // 'full' | 'fixed' | 'percent'
       reboundFixedAmount: 20,
       reboundPercent: 20,
+      wildcards: { doble: 1, cincuenta: 1, cambiar: 1 },
     },
   }
+}
+
+export const WILDCARD_INFO = {
+  doble: { label: 'Doble o nada', icon: '🎲' },
+  cincuenta: { label: '50/50', icon: '✂️' },
+  cambiar: { label: 'Cambiar pregunta', icon: '🔄' },
 }
 
 export function createTeam(index) {
@@ -134,7 +141,8 @@ export function convertQuestionType(question, nuevoTipo) {
 }
 
 export function createInitialGameState(quiz) {
-  const teams = quiz.teamsConfig.teams.map((t) => ({ ...t, score: 0 }))
+  const wildcardCounts = quiz.settings?.wildcards || { doble: 1, cincuenta: 1, cambiar: 1 }
+  const teams = quiz.teamsConfig.teams.map((t) => ({ ...t, score: 0, comodines: { ...wildcardCounts } }))
   const questionsState = {}
   quiz.questions.forEach((q) => {
     questionsState[q.id] = { status: 'disponible', respondidaPor: null, puntosOtorgados: 0 }
@@ -148,6 +156,7 @@ export function createInitialGameState(quiz) {
     turnOrder: teams.map((t) => t.id),
     turnMode: quiz.settings?.turnMode || 'auto',
     orderMode,
+    wildcardCounts: wildcardCounts,
     tileOrder: orderMode === 'aleatorio' ? shuffleArray(questionIds) : questionIds,
     activeTeamId: teams[0]?.id || null,
     activeTeamIndex: 0,
