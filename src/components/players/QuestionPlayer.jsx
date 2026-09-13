@@ -5,7 +5,7 @@ export default function QuestionPlayer({ question, revealed, fiftyFiftyActive, o
     case 'test':
       return <TestPlayer question={question} revealed={revealed} fiftyFiftyActive={fiftyFiftyActive} onCheck={onCheckTest} />
     case 'vf':
-      return <VfPlayer question={question} revealed={revealed} />
+      return <VfPlayer question={question} revealed={revealed} onCheck={onCheckTest} />
     case 'hueco':
       return <HuecoPlayer question={question} revealed={revealed} />
     case 'corta':
@@ -145,13 +145,35 @@ function TestPlayerMultiple({ question, revealed, opciones, onCheck }) {
 }
 
 // ---------- Verdadero / Falso ----------
-function VfPlayer({ question, revealed }) {
+function VfPlayer({ question, revealed, onCheck }) {
+  const [selected, setSelected] = useState(null) // null | true | false
+
+  function handleClick(valor) {
+    if (revealed || !onCheck || selected !== null) return
+    setSelected(valor)
+    onCheck(valor === question.correcta)
+  }
+
+  function claseFor(valor) {
+    if (revealed) return valor === question.correcta ? 'correct-reveal' : ''
+    if (selected === valor) return valor === question.correcta ? 'correct-reveal' : 'wrong-reveal'
+    return ''
+  }
+
   return (
     <div className="vf-grid">
-      <div className={`vf-btn card ${revealed && question.correcta ? 'correct-reveal' : ''}`} style={{ background: revealed && question.correcta ? undefined : 'var(--bg-card-2)' }}>
+      <div
+        className={`vf-btn card ${claseFor(true)} ${onCheck ? 'option-clickable' : ''}`}
+        style={{ background: claseFor(true) ? undefined : 'var(--bg-card-2)' }}
+        onClick={() => handleClick(true)}
+      >
         ✅ Verdadero
       </div>
-      <div className={`vf-btn card ${revealed && !question.correcta ? 'correct-reveal' : ''}`} style={{ background: revealed && !question.correcta ? undefined : 'var(--bg-card-2)' }}>
+      <div
+        className={`vf-btn card ${claseFor(false)} ${onCheck ? 'option-clickable' : ''}`}
+        style={{ background: claseFor(false) ? undefined : 'var(--bg-card-2)' }}
+        onClick={() => handleClick(false)}
+      >
         ❌ Falso
       </div>
     </div>
