@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 
-export default function QuestionPlayer({ question, revealed, fiftyFiftyActive, onSelectTestOption }) {
+export default function QuestionPlayer({ question, revealed, fiftyFiftyActive, onSelectTestOption, onCheckImage }) {
   switch (question.tipo) {
     case 'test':
       return <TestPlayer question={question} revealed={revealed} fiftyFiftyActive={fiftyFiftyActive} onSelectOption={onSelectTestOption} />
@@ -11,7 +11,7 @@ export default function QuestionPlayer({ question, revealed, fiftyFiftyActive, o
     case 'corta':
       return <CortaPlayer question={question} revealed={revealed} />
     case 'imagen':
-      return <ImagenPlayer question={question} revealed={revealed} />
+      return <ImagenPlayer question={question} revealed={revealed} onCheck={onCheckImage} />
     case 'orden':
       return <OrdenPlayer question={question} revealed={revealed} />
     case 'relaciona':
@@ -127,20 +127,28 @@ function CortaPlayer({ question, revealed }) {
 }
 
 // ---------- Señala con el ratón ----------
-function ImagenPlayer({ question, revealed }) {
+function ImagenPlayer({ question, revealed, onCheck }) {
   const [marker, setMarker] = useState(null)
+  const [checked, setChecked] = useState(null) // null | true | false
 
   function handleClick(e) {
+    if (checked !== null) return
     const rect = e.currentTarget.getBoundingClientRect()
     const x = ((e.clientX - rect.left) / rect.width) * 100
     const y = ((e.clientY - rect.top) / rect.height) * 100
-    const hit = (question.zonas || []).some((z) => Math.hypot(z.x - x, z.y - y) <= z.radio)
-    setMarker({ x, y, hit })
+    setMarker({ x, y })
+  }
+
+  function comprobar() {
+    if (!marker) return
+    const hit = (question.zonas || []).some((z) => Math.hypot(z.x - marker.x, z.y - marker.y) <= z.radio)
+    setChecked(hit)
+    onCheck?.(hit)
   }
 
   return (
     <div>
-      <div className="image-click-wrap" onClick={handleClick} style={{ cursor: 'crosshair' }}>
+      <div className="image-click-wrap" onClick={handleClick} style={{ cursor: checked === null ? 'crosshair' : 'default' }}>
         <img src={question.imagen} alt="" />
         {revealed &&
           (question.zonas || []).map((z) => (
@@ -148,13 +156,29 @@ function ImagenPlayer({ question, revealed }) {
           ))}
         {marker && (
           <div
-            className={`click-marker ${marker.hit ? 'hit' : 'miss'}`}
-            style={{ left: `${marker.x}%`, top: `${marker.y}%` }}
+            className={`click-marker ${checked === null ? '' : checked ? 'hit' : 'miss'}`}
+            style={{ left: `${marker.x}%`, top: `${marker.y}%`, background: checked === null ? 'rgba(255,204,51,0.85)' : undefined }}
           />
         )}
       </div>
+      <div className="flex-gap mt-2" style={{ justifyContent: 'center' }}>
+        <button type="button" className="btn btn-info" disabled={!marker || checked !== null} onClick={comprobar}>
+          ✅ Comprobar
+        </button>
+        {marker && checked === null && (
+          <button type="button" className="btn btn-ghost" onClick={() => setMarker(null)}>
+            🔄 Volver a señalar
+          </button>
+        )}
+      </div>
       <p className="muted mt-1">
-        {marker ? (marker.hit ? '✅ Dentro de una zona marcada (orientativo).' : '❌ Fuera de las zonas marcadas (orientativo).') : 'Haz clic en la imagen para señalar. El docente decide si la respuesta es válida.'}
+        {checked === null
+          ? marker
+            ? 'Pulsa "Comprobar" para confirmar el punto señalado.'
+            : 'Haz clic en la imagen para señalar dónde crees que está.'
+          : checked
+            ? '✅ ¡Correcto!'
+            : '❌ Incorrecto.'}
       </p>
     </div>
   )
@@ -164,7 +188,7 @@ function ImagenPlayer({ question, revealed }) {
 function OrdenPlayer({ question, revealed }) {
   const initial = useMemo(() => shuffle(question.elementos, question.id.length + 3), [question])
   const [items, setItems] = useState(initial)
-  const [checked, setChecked] = useState(null) // array of booleans por posición
+  const [resultado, setResultado] = useState(null) // null | true | false
   const [dragIdx, setDragIdx] = useState(null)
 
   function onDrop(targetIdx) {
@@ -173,8 +197,7 @@ function OrdenPlayer({ question, revealed }) {
     const [moved] = copy.splice(dragIdx, 1)
     copy.splice(targetIdx, 0, moved)
     setItems(copy)
-    setDragIdx(null)
-    setChecked(null)
+    setResultado(null)
   }
 
   function move(i, dir) {
@@ -183,12 +206,12 @@ function OrdenPlayer({ question, revealed }) {
     const copy = items.slice()
     ;[copy[i], copy[j]] = [copy[j], copy[i]]
     setItems(copy)
-    setChecked(null)
+    setResultado(null)
   }
 
   function comprobar() {
-    const result = items.map((it, i) => it.id === question.elementos[i].id)
-    setChecked(result)
+    const esCorrecto = items.every((it, i) => it.id === question.elementos[i].id)
+    setResultado(esCorrecto)
   }
 
   return (
@@ -202,11 +225,6 @@ function OrdenPlayer({ question, revealed }) {
             onDragStart={() => setDragIdx(i)}
             onDragOver={(e) => e.preventDefault()}
             onDrop={() => onDrop(i)}
-            style={
-              checked
-                ? { border: `3px solid ${checked[i] ? 'var(--success)' : 'var(--danger)'}`, background: checked[i] ? 'rgba(52,211,153,0.15)' : 'rgba(248,113,113,0.15)' }
-                : undefined
-            }
           >
             <span className="drag-handle">⠿</span>
             <span>{it.texto}</span>
@@ -220,6 +238,9 @@ function OrdenPlayer({ question, revealed }) {
       <div className="flex-gap mt-2" style={{ justifyContent: 'center' }}>
         <button type="button" className="btn btn-info" onClick={comprobar}>✅ Comprobar</button>
       </div>
+      {resultado !== null && (
+        <p className={resultado ? 'result-ok' : 'result-fail'}>{resultado ? '✅ ¡Correcto!' : '❌ Incorrecto.'}</p>
+      )}
       {revealed && (
         <div className="reveal-box mt-2">
           <strong>Orden correcto:</strong> {question.elementos.map((e) => e.texto).join(' → ')}
@@ -234,19 +255,31 @@ function RelacionaPlayer({ question, revealed }) {
   const derechaShuffled = useMemo(() => shuffle(question.pares, question.id.length + 5), [question])
   const [selectedLeft, setSelectedLeft] = useState(null)
   const [matches, setMatches] = useState({}) // izqId -> derId
-  const [checked, setChecked] = useState(false)
+  const [resultado, setResultado] = useState(null) // null | true | false
 
   function clickLeft(par) {
+    if (resultado !== null) return
     setSelectedLeft(par.id)
   }
   function clickRight(par) {
-    if (!selectedLeft) return
+    if (resultado !== null || !selectedLeft) return
     setMatches((m) => ({ ...m, [selectedLeft]: par.id }))
     setSelectedLeft(null)
-    setChecked(false)
   }
 
-  const isCorrectMatch = (izqId) => matches[izqId] === izqId
+  function comprobar() {
+    const completo = question.pares.every((p) => matches[p.id])
+    if (!completo) return
+    const esCorrecto = question.pares.every((p) => matches[p.id] === p.id)
+    setResultado(esCorrecto)
+  }
+
+  function reiniciar() {
+    setMatches({})
+    setResultado(null)
+  }
+
+  const todasEmparejadas = question.pares.every((p) => matches[p.id])
 
   return (
     <div>
@@ -254,9 +287,8 @@ function RelacionaPlayer({ question, revealed }) {
         <div className="match-column">
           {question.pares.map((p) => {
             let cls = ''
-            if (checked) cls = isCorrectMatch(p.id) ? 'correct' : matches[p.id] ? 'incorrect' : ''
-            else if (matches[p.id]) cls = 'matched'
-            else if (selectedLeft === p.id) cls = 'selected'
+            if (matches[p.id]) cls = 'matched'
+            if (selectedLeft === p.id) cls = 'selected'
             return (
               <div key={p.id} className={`match-item ${cls}`} onClick={() => clickLeft(p)}>
                 {p.izquierda}
@@ -267,8 +299,7 @@ function RelacionaPlayer({ question, revealed }) {
         <div className="match-column">
           {derechaShuffled.map((p) => {
             const matchedLeftId = Object.entries(matches).find(([, derId]) => derId === p.id)?.[0]
-            let cls = matchedLeftId ? 'matched' : ''
-            if (checked && matchedLeftId) cls = matchedLeftId === p.id ? 'correct' : 'incorrect'
+            const cls = matchedLeftId ? 'matched' : ''
             return (
               <div key={p.id} className={`match-item ${cls}`} onClick={() => clickRight(p)}>
                 {p.derecha}
@@ -278,11 +309,16 @@ function RelacionaPlayer({ question, revealed }) {
         </div>
       </div>
       <div className="flex-gap mt-2" style={{ justifyContent: 'center' }}>
-        <button type="button" className="btn btn-info" onClick={() => setChecked(true)}>✅ Comprobar</button>
-        <button type="button" className="btn btn-ghost" onClick={() => { setMatches({}); setChecked(false) }}>
+        <button type="button" className="btn btn-info" disabled={!todasEmparejadas || resultado !== null} onClick={comprobar}>
+          ✅ Comprobar
+        </button>
+        <button type="button" className="btn btn-ghost" onClick={reiniciar}>
           🔄 Reiniciar
         </button>
       </div>
+      {resultado !== null && (
+        <p className={resultado ? 'result-ok' : 'result-fail'}>{resultado ? '✅ ¡Correcto!' : '❌ Incorrecto.'}</p>
+      )}
       {revealed && (
         <div className="reveal-box mt-2">
           <strong>Solución:</strong> {question.pares.map((p) => `${p.izquierda} = ${p.derecha}`).join(' · ')}

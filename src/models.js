@@ -85,7 +85,7 @@ export function createEmptyQuestion(tipo = 'test', orden = 1) {
         mezclar: true,
       }
     case 'vf':
-      return { ...base, correcta: true }
+      return { ...base, correcta: true, permitirRebote: false }
     case 'hueco':
       return { ...base, huecos: [[]] }
     case 'corta':

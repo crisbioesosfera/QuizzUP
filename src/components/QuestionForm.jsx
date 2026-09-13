@@ -95,23 +95,27 @@ export default function QuestionForm({ question, onChange }) {
         </div>
       </div>
 
-      <div className="field-row">
-        <div className="checkbox-row" style={{ flex: 1 }}>
-          <input
-            type="checkbox"
-            id="permitirRebote"
-            checked={!!question.permitirRebote}
-            onChange={(e) => update({ permitirRebote: e.target.checked })}
-          />
-          <label htmlFor="permitirRebote">Permitir rebote</label>
-        </div>
-        {question.permitirRebote && (
-          <div className="field" style={{ flex: 1 }}>
-            <label>Máximo de rebotes (0 = sin límite)</label>
-            <input type="number" min="0" value={question.maximoRebotes || 0} onChange={(e) => update({ maximoRebotes: Number(e.target.value) })} />
+      {question.tipo === 'vf' ? (
+        <p className="muted">Las preguntas de verdadero/falso no admiten rebote (solo hay dos opciones).</p>
+      ) : (
+        <div className="field-row">
+          <div className="checkbox-row" style={{ flex: 1 }}>
+            <input
+              type="checkbox"
+              id="permitirRebote"
+              checked={!!question.permitirRebote}
+              onChange={(e) => update({ permitirRebote: e.target.checked })}
+            />
+            <label htmlFor="permitirRebote">Permitir rebote</label>
           </div>
-        )}
-      </div>
+          {question.permitirRebote && (
+            <div className="field" style={{ flex: 1 }}>
+              <label>Máximo de rebotes (0 = sin límite)</label>
+              <input type="number" min="0" value={question.maximoRebotes || 0} onChange={(e) => update({ maximoRebotes: Number(e.target.value) })} />
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="field">
         <label>Explicación / solución ampliada (opcional)</label>

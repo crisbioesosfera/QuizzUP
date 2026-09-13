@@ -24,7 +24,8 @@ export default function QuestionPlayScreen({ quiz, question, tileNumber, gameSta
   const attempted = new Set(answering.attemptedTeamIds)
   const availableForRebound = gameState.teams.filter((t) => !attempted.has(t.id))
   const reboundLimitReached = question.maximoRebotes > 0 && answering.reboundCount >= question.maximoRebotes
-  const reboundDisabled = !question.permitirRebote || availableForRebound.length === 0 || reboundLimitReached
+  // Verdadero/falso no admite rebote: solo hay dos opciones, no tiene sentido pasarla a otro equipo.
+  const reboundDisabled = question.tipo === 'vf' || !question.permitirRebote || availableForRebound.length === 0 || reboundLimitReached
 
   const comodines = answeringTeam?.comodines || { doble: 0, cincuenta: 0, cambiar: 0 }
   const sinPuntuarAun = answering.pointsAwardedThisQuestion === 0
@@ -114,6 +115,13 @@ export default function QuestionPlayScreen({ quiz, question, tileNumber, gameSta
     const doublePenalty = answering.doubleTeamId === answeringTeam.id ? question.puntosMaximos : 0
     dispatch({ type: 'MARK_INCORRECT', questionId: question.id, teamId: answeringTeam.id, doublePenalty })
     sounds.incorrect()
+    // Verdadero/falso: sin rebote posible, se cierra directamente como fallida
+    // y se sale al panel, sin pedir confirmación (no hay puntos que perder ni
+    // nadie más a quien preguntar).
+    if (question.tipo === 'vf') {
+      doClose()
+      return
+    }
     // Encadena directamente el siguiente paso lógico: si se puede rebotar, se
     // ofrece a quién (o se rebota solo al siguiente equipo en modo automático);
     // si no queda a quién rebotar, se cierra la pregunta.
@@ -121,6 +129,17 @@ export default function QuestionPlayScreen({ quiz, question, tileNumber, gameSta
       handleClose()
     } else {
       triggerRebound()
+    }
+  }
+
+  // Preguntas de "señala con el ratón": al pulsar Comprobar, se resuelve
+  // automáticamente igual que si el docente hubiera pulsado el botón
+  // correspondiente (correcta cierra y puntúa; incorrecta encadena rebote).
+  function handleCheckImage(hit) {
+    if (hit) {
+      handleCorrect()
+    } else {
+      handleIncorrect()
     }
   }
 
@@ -213,6 +232,7 @@ export default function QuestionPlayScreen({ quiz, question, tileNumber, gameSta
           revealed={revealed}
           fiftyFiftyActive={answering.fiftyFiftyActive}
           onSelectTestOption={handleSelectTestOption}
+          onCheckImage={handleCheckImage}
         />
         {revealed && question.explicacion && (
           <div className="reveal-box">
@@ -234,9 +254,11 @@ export default function QuestionPlayScreen({ quiz, question, tileNumber, gameSta
         <button className="btn btn-info" onClick={() => setShowPartial(true)}>
           🎯 Puntuación parcial
         </button>
-        <button className="btn" disabled={reboundDisabled} onClick={triggerRebound}>
-          🔁 Rebote
-        </button>
+        {question.tipo !== 'vf' && (
+          <button className="btn" disabled={reboundDisabled} onClick={triggerRebound}>
+            🔁 Rebote
+          </button>
+        )}
         <button className="btn btn-ghost" onClick={handleClose}>
           🔒 Cerrar pregunta
         </button>
