@@ -148,27 +148,57 @@ export default function TeamsSetupScreen({ quizId, onBack, onBackHome, onStartGa
 
       <div className="card mb-3">
         <h3>Comodines por equipo</h3>
-        <p className="muted">Cuántos tiene cada equipo al empezar (se gastan al usarlos, iguales para todos).</p>
+        <p className="muted">Elige qué comodines pueden usar los equipos y cuántas veces cada uno (igual para todos).</p>
         <div className="field-row">
-          {Object.entries(WILDCARD_INFO).map(([key, info]) => (
-            <div className="field" key={key}>
-              <label>
-                {info.icon} {info.label}
-              </label>
-              <input
-                type="number"
-                min="0"
-                max="9"
-                value={(quiz.settings.wildcards || DEFAULT_WILDCARDS)[key]}
-                onChange={(e) => updateWildcard(key, Number(e.target.value))}
-              />
-            </div>
-          ))}
+          {Object.entries(WILDCARD_INFO).map(([key, info]) => {
+            const value = (quiz.settings.wildcards || DEFAULT_WILDCARDS)[key]
+            const enabled = value > 0
+            return (
+              <div className="field" key={key}>
+                <div className="checkbox-row" style={{ marginBottom: 6 }}>
+                  <input
+                    type="checkbox"
+                    id={`wc-${key}`}
+                    checked={enabled}
+                    onChange={(e) => updateWildcard(key, e.target.checked ? 1 : 0)}
+                  />
+                  <label htmlFor={`wc-${key}`}>
+                    {info.icon} {info.label}
+                  </label>
+                </div>
+                <label>Veces disponibles</label>
+                <input
+                  type="number"
+                  min="0"
+                  max="9"
+                  disabled={!enabled}
+                  value={value}
+                  onChange={(e) => updateWildcard(key, Number(e.target.value))}
+                />
+              </div>
+            )
+          })}
         </div>
       </div>
 
       <div className="card mb-3">
-        <h3>Rebote: puntuación al pasar a otro equipo</h3>
+        <h3>Rebote</h3>
+        <label>A quién pasa la pregunta cuando falla un equipo</label>
+        <div className="flex-gap">
+          <button className={`btn ${quiz.settings.reboundMode !== 'automatico' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => updateSettings({ reboundMode: 'manual' })}>
+            🖐️ Elegir equipo manualmente
+          </button>
+          <button className={`btn ${quiz.settings.reboundMode === 'automatico' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => updateSettings({ reboundMode: 'automatico' })}>
+            ➡️ Automático (siguiente equipo)
+          </button>
+        </div>
+        <p className="muted mt-1">
+          {quiz.settings.reboundMode === 'automatico'
+            ? 'El rebote pasa directamente al siguiente equipo en el orden de turnos (Equipo 1 → Equipo 2 → Equipo 3...).'
+            : 'Al pulsar "Rebote" eliges tú a qué equipo pasa la pregunta.'}
+        </p>
+        <div className="divider" />
+        <label>Puntuación al pasar a otro equipo</label>
         <div className="flex-gap">
           <button className={`btn ${quiz.settings.reboundPolicy === 'full' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => updateSettings({ reboundPolicy: 'full' })}>
             Mantener todos los puntos

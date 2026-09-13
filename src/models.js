@@ -33,6 +33,7 @@ export function createEmptyQuiz(name = 'Nuevo concurso') {
     settings: {
       turnMode: 'auto',
       orderMode: 'fijo', // 'fijo' | 'aleatorio'
+      reboundMode: 'manual', // 'manual' | 'automatico'
       reboundPolicy: 'full', // 'full' | 'fixed' | 'percent'
       reboundFixedAmount: 20,
       reboundPercent: 20,

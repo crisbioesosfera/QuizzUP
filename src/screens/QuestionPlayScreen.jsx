@@ -74,16 +74,38 @@ export default function QuestionPlayScreen({ quiz, question, tileNumber, gameSta
     award(points, 'parcial')
   }
 
+  function nextAutoReboundTeam() {
+    const order = gameState.turnOrder
+    const currentIdx = order.indexOf(answering.answeringTeamId)
+    for (let step = 1; step <= order.length; step++) {
+      const candidateId = order[(currentIdx + step) % order.length]
+      if (!attempted.has(candidateId)) {
+        return gameState.teams.find((t) => t.id === candidateId)
+      }
+    }
+    return null
+  }
+
+  function triggerRebound() {
+    if (quiz.settings.reboundMode === 'automatico') {
+      const siguiente = nextAutoReboundTeam()
+      if (siguiente) handleReboundTo(siguiente.id)
+    } else {
+      setShowReboundPicker(true)
+    }
+  }
+
   function handleIncorrect() {
     const doublePenalty = answering.doubleTeamId === answeringTeam.id ? question.puntosMaximos : 0
     dispatch({ type: 'MARK_INCORRECT', questionId: question.id, teamId: answeringTeam.id, doublePenalty })
     sounds.incorrect()
     // Encadena directamente el siguiente paso lógico: si se puede rebotar, se
-    // ofrece a quién; si no queda a quién rebotar, se cierra la pregunta.
+    // ofrece a quién (o se rebota solo al siguiente equipo en modo automático);
+    // si no queda a quién rebotar, se cierra la pregunta.
     if (reboundDisabled) {
       handleClose()
     } else {
-      setShowReboundPicker(true)
+      triggerRebound()
     }
   }
 
@@ -184,7 +206,7 @@ export default function QuestionPlayScreen({ quiz, question, tileNumber, gameSta
         <button className="btn btn-info" onClick={() => setShowPartial(true)}>
           🎯 Puntuación parcial
         </button>
-        <button className="btn" disabled={reboundDisabled} onClick={() => setShowReboundPicker(true)}>
+        <button className="btn" disabled={reboundDisabled} onClick={triggerRebound}>
           🔁 Rebote
         </button>
         <button className="btn btn-ghost" onClick={handleClose}>
