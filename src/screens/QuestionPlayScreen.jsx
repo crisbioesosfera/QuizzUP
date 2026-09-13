@@ -79,11 +79,12 @@ export default function QuestionPlayScreen({ quiz, question, tileNumber, gameSta
     award(points, 'parcial')
   }
 
-  // Al pulsar directamente una opción en preguntas tipo test: si es la
-  // correcta, se da por correcta; si no, se marca incorrecta (y encadena
-  // rebote/cierre igual que el botón "Respuesta incorrecta").
-  function handleSelectTestOption(optionId) {
-    if (question.respuestasCorrectas.includes(optionId)) {
+  // Preguntas tipo test: si hay una única respuesta correcta, pulsar una
+  // opción resuelve al instante; si hay varias, hay que marcarlas todas y
+  // pulsar "Comprobar". En ambos casos, correcta puntúa y cierra, e
+  // incorrecta encadena el mismo flujo que "Respuesta incorrecta".
+  function handleCheckTest(esCorrecto) {
+    if (esCorrecto) {
       handleCorrect()
     } else {
       handleIncorrect()
@@ -231,7 +232,7 @@ export default function QuestionPlayScreen({ quiz, question, tileNumber, gameSta
           question={question}
           revealed={revealed}
           fiftyFiftyActive={answering.fiftyFiftyActive}
-          onSelectTestOption={handleSelectTestOption}
+          onCheckTest={handleCheckTest}
           onCheckImage={handleCheckImage}
         />
         {revealed && question.explicacion && (

@@ -716,6 +716,7 @@ textarea { resize: vertical; min-height: 70px; }
 .option-tile.wrong-reveal { opacity: 0.5; }
 .option-tile.option-clickable { cursor: pointer; }
 .option-tile.option-clickable:hover { transform: translateY(-2px); box-shadow: 0 1px 0 rgba(255,255,255,0.1) inset, 0 10px 24px rgba(0,0,0,0.4), 0 0 0 2px var(--accent); }
+.option-tile.selected-multi { border-color: var(--accent-3); background: rgba(45, 212, 191, 0.16); box-shadow: 0 1px 0 rgba(255,255,255,0.1) inset, 0 0 0 2px var(--accent-3); }
 
 .vf-grid { display: flex; gap: 24px; }
 .vf-btn { padding: 30px 50px; font-size: 1.6rem; border-radius: var(--radius-lg); font-family: var(--font-display); font-weight: 700; box-shadow: 0 1px 0 rgba(255,255,255,0.06) inset, 0 10px 26px rgba(0,0,0,0.35); }

@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react'
 
-export default function QuestionPlayer({ question, revealed, fiftyFiftyActive, onSelectTestOption, onCheckImage }) {
+export default function QuestionPlayer({ question, revealed, fiftyFiftyActive, onCheckTest, onCheckImage }) {
   switch (question.tipo) {
     case 'test':
-      return <TestPlayer question={question} revealed={revealed} fiftyFiftyActive={fiftyFiftyActive} onSelectOption={onSelectTestOption} />
+      return <TestPlayer question={question} revealed={revealed} fiftyFiftyActive={fiftyFiftyActive} onCheck={onCheckTest} />
     case 'vf':
       return <VfPlayer question={question} revealed={revealed} />
     case 'hueco':
@@ -33,8 +33,8 @@ function shuffle(arr, seed) {
 }
 
 // ---------- Tipo test ----------
-function TestPlayer({ question, revealed, fiftyFiftyActive, onSelectOption }) {
-  const [selectedId, setSelectedId] = useState(null)
+function TestPlayer({ question, revealed, fiftyFiftyActive, onCheck }) {
+  const esMultiple = question.respuestasCorrectas.length > 1
   const opciones = useMemo(() => {
     let opts = question.mezclar ? shuffle(question.opciones, question.id.length + question.opciones.length) : question.opciones
     if (fiftyFiftyActive) {
@@ -45,10 +45,20 @@ function TestPlayer({ question, revealed, fiftyFiftyActive, onSelectOption }) {
     return opts
   }, [question, fiftyFiftyActive])
 
+  if (esMultiple) {
+    return <TestPlayerMultiple question={question} revealed={revealed} opciones={opciones} onCheck={onCheck} />
+  }
+  return <TestPlayerUnica question={question} revealed={revealed} opciones={opciones} onCheck={onCheck} />
+}
+
+// Una única respuesta correcta: pulsar una opción resuelve al instante.
+function TestPlayerUnica({ question, revealed, opciones, onCheck }) {
+  const [selectedId, setSelectedId] = useState(null)
+
   function handleClick(o) {
-    if (revealed || !onSelectOption || selectedId) return
+    if (revealed || !onCheck || selectedId) return
     setSelectedId(o.id)
-    onSelectOption(o.id)
+    onCheck(question.respuestasCorrectas.includes(o.id))
   }
 
   return (
@@ -61,7 +71,7 @@ function TestPlayer({ question, revealed, fiftyFiftyActive, onSelectOption }) {
         return (
           <div
             key={o.id}
-            className={`option-tile ${cls} ${onSelectOption ? 'option-clickable' : ''}`}
+            className={`option-tile ${cls} ${onCheck ? 'option-clickable' : ''}`}
             onClick={() => handleClick(o)}
           >
             {o.texto} {(revealed || selectedId === o.id) && isCorrect ? '✅' : ''}
@@ -69,6 +79,67 @@ function TestPlayer({ question, revealed, fiftyFiftyActive, onSelectOption }) {
           </div>
         )
       })}
+    </div>
+  )
+}
+
+// Varias respuestas correctas: hay que marcarlas todas y pulsar Comprobar.
+function TestPlayerMultiple({ question, revealed, opciones, onCheck }) {
+  const [selectedIds, setSelectedIds] = useState(new Set())
+  const [checked, setChecked] = useState(null) // null | true | false
+  const totalCorrectas = question.respuestasCorrectas.length
+  const correctasSeleccionadas = [...selectedIds].filter((id) => question.respuestasCorrectas.includes(id)).length
+
+  function toggle(id) {
+    if (revealed || checked !== null) return
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  function comprobar() {
+    const correctSet = new Set(question.respuestasCorrectas)
+    const esCorrecto = selectedIds.size === correctSet.size && [...selectedIds].every((id) => correctSet.has(id))
+    setChecked(esCorrecto)
+    onCheck?.(esCorrecto)
+  }
+
+  return (
+    <div>
+      <div className="options-grid">
+        {opciones.map((o) => {
+          const isCorrect = question.respuestasCorrectas.includes(o.id)
+          const isSelected = selectedIds.has(o.id)
+          let cls = ''
+          if (revealed) cls = isCorrect ? 'correct-reveal' : 'wrong-reveal'
+          else if (checked !== null && isSelected) cls = isCorrect ? 'correct-reveal' : 'wrong-reveal'
+          else if (isSelected) cls = 'selected-multi'
+          return (
+            <div
+              key={o.id}
+              className={`option-tile ${cls} ${onCheck && checked === null ? 'option-clickable' : ''}`}
+              onClick={() => toggle(o.id)}
+            >
+              {o.texto}
+              {checked === null && isSelected && ' ☑️'}
+              {checked !== null && isSelected && (isCorrect ? ' ✅' : ' ❌')}
+            </div>
+          )
+        })}
+      </div>
+      {onCheck && checked === null && (
+        <div className="flex-gap mt-2" style={{ justifyContent: 'center', alignItems: 'center' }}>
+          <span className="badge badge-success">
+            {correctasSeleccionadas}/{totalCorrectas} correctas seleccionadas
+          </span>
+          <button type="button" className="btn btn-info" disabled={selectedIds.size === 0} onClick={comprobar}>
+            ✅ Comprobar
+          </button>
+        </div>
+      )}
     </div>
   )
 }
