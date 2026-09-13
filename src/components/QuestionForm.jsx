@@ -1,5 +1,5 @@
 import { useRef } from 'react'
-import { TIPOS_PREGUNTA } from '../models'
+import { TIPOS_PREGUNTA, convertQuestionType } from '../models'
 import { uid } from '../utils/id'
 
 const LETRAS = ['a', 'b', 'c', 'd', 'e', 'f']
@@ -7,6 +7,10 @@ const LETRAS = ['a', 'b', 'c', 'd', 'e', 'f']
 export default function QuestionForm({ question, onChange }) {
   function update(patch) {
     onChange({ ...question, ...patch })
+  }
+
+  function handleTipoChange(nuevoTipo) {
+    onChange(convertQuestionType(question, nuevoTipo))
   }
 
   return (
@@ -18,13 +22,16 @@ export default function QuestionForm({ question, onChange }) {
         </div>
         <div className="field">
           <label>Tipo de pregunta</label>
-          <select value={question.tipo} disabled>
+          <select value={question.tipo} onChange={(e) => handleTipoChange(e.target.value)}>
             {TIPOS_PREGUNTA.map((t) => (
               <option key={t.value} value={t.value}>
                 {t.label}
               </option>
             ))}
           </select>
+          <p className="muted" style={{ marginTop: 4, marginBottom: 0 }}>
+            Al cambiar el tipo se reinician las opciones/config. propias de ese tipo (el enunciado, puntos y demás se mantienen).
+          </p>
         </div>
         <div className="field">
           <label>Categoría / tema (opcional)</label>

@@ -103,6 +103,34 @@ export function createEmptyQuestion(tipo = 'test', orden = 1) {
   }
 }
 
+const CAMPOS_COMUNES = [
+  'id',
+  'orden',
+  'enunciado',
+  'imagen',
+  'explicacion',
+  'categoria',
+  'dificultad',
+  'puntosMaximos',
+  'puntosParciales',
+  'tiempoSegundos',
+  'permitirRebote',
+  'maximoRebotes',
+]
+
+// Cambia el tipo de una pregunta ya creada, conservando los campos comunes
+// (enunciado, puntos, tiempo, rebote...) y reiniciando los campos propios
+// del tipo anterior (opciones, huecos, zonas, elementos, pares...).
+export function convertQuestionType(question, nuevoTipo) {
+  if (question.tipo === nuevoTipo) return question
+  const fresh = createEmptyQuestion(nuevoTipo, question.orden)
+  const comunes = {}
+  CAMPOS_COMUNES.forEach((campo) => {
+    if (question[campo] !== undefined) comunes[campo] = question[campo]
+  })
+  return { ...fresh, ...comunes, tipo: nuevoTipo }
+}
+
 export function createInitialGameState(quiz) {
   const teams = quiz.teamsConfig.teams.map((t) => ({ ...t, score: 0 }))
   const questionsState = {}
