@@ -50,6 +50,13 @@ export default function QuestionPlayScreen({ quiz, question, gameState, dispatch
   function handleIncorrect() {
     dispatch({ type: 'MARK_INCORRECT', questionId: question.id, teamId: answeringTeam.id })
     sounds.incorrect()
+    // Encadena directamente el siguiente paso lógico: si se puede rebotar, se
+    // ofrece a quién; si no queda a quién rebotar, se cierra la pregunta.
+    if (reboundDisabled) {
+      handleClose()
+    } else {
+      setShowReboundPicker(true)
+    }
   }
 
   function handleReboundTo(teamId) {
