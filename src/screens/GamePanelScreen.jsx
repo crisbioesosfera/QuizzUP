@@ -72,10 +72,12 @@ export default function GamePanelScreen({ quizId, onExit, onFinish }) {
   }
 
   if (currentQuestion) {
+    const tileNumber = (gameState.tileOrder || []).indexOf(currentQuestion.id) + 1
     return (
       <QuestionPlayScreen
         quiz={quiz}
         question={currentQuestion}
+        tileNumber={tileNumber || currentQuestion.orden}
         gameState={gameState}
         dispatch={dispatch}
         onBack={() => dispatch({ type: 'BACK_TO_PANEL' })}
@@ -114,7 +116,9 @@ export default function GamePanelScreen({ quizId, onExit, onFinish }) {
       <h2 className="panel-title">Panel de preguntas</h2>
       {reopenMode && <p className="text-center muted">Modo reabrir activo: haz clic en una casilla cerrada para reabrirla.</p>}
       <div className="questions-grid">
-        {quiz.questions.map((q, i) => {
+        {(gameState.tileOrder || quiz.questions.map((q) => q.id)).map((qid, i) => {
+          const q = quiz.questions.find((qq) => qq.id === qid)
+          if (!q) return null
           const st = gameState.questionsState[q.id]
           return (
             <button key={q.id} className={`question-tile ${st.status}`} onClick={() => handleTileClick(q)} disabled={st.status !== 'disponible' && st.status !== 'abierta' && !reopenMode}>

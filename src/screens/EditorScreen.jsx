@@ -32,7 +32,8 @@ export default function EditorScreen({ quizId, onBack, onConfigureTeams }) {
     )
   }
 
-  const selected = quiz.questions.find((q) => q.id === selectedId) || null
+  const selectedIndex = quiz.questions.findIndex((q) => q.id === selectedId)
+  const selected = selectedIndex >= 0 ? quiz.questions[selectedIndex] : null
 
   function updateQuiz(patch) {
     setQuiz((q) => ({ ...q, ...patch, updatedAt: Date.now() }))
@@ -159,7 +160,36 @@ export default function EditorScreen({ quizId, onBack, onConfigureTeams }) {
 
           <div className="card">
             {selected ? (
-              <QuestionForm key={selected.id} question={selected} onChange={updateQuestion} />
+              <>
+                <div className="flex-between mb-2">
+                  <button className="btn btn-ghost btn-sm" disabled={selectedIndex <= 0} onClick={() => setSelectedId(quiz.questions[selectedIndex - 1].id)}>
+                    ‹ Anterior
+                  </button>
+                  <span className="muted">
+                    Pregunta {selectedIndex + 1} de {quiz.questions.length}
+                  </span>
+                  <button
+                    className="btn btn-ghost btn-sm"
+                    disabled={selectedIndex >= quiz.questions.length - 1}
+                    onClick={() => setSelectedId(quiz.questions[selectedIndex + 1].id)}
+                  >
+                    Siguiente ›
+                  </button>
+                </div>
+                <QuestionForm key={selected.id} question={selected} onChange={updateQuestion} />
+                <div className="flex-between mt-3">
+                  <button className="btn btn-ghost" disabled={selectedIndex <= 0} onClick={() => setSelectedId(quiz.questions[selectedIndex - 1].id)}>
+                    ‹ Anterior
+                  </button>
+                  <button
+                    className="btn btn-primary"
+                    disabled={selectedIndex >= quiz.questions.length - 1}
+                    onClick={() => setSelectedId(quiz.questions[selectedIndex + 1].id)}
+                  >
+                    Siguiente ›
+                  </button>
+                </div>
+              </>
             ) : (
               <p className="muted">Selecciona una pregunta de la lista, o añade una nueva.</p>
             )}

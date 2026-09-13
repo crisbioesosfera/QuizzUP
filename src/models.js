@@ -1,4 +1,5 @@
 import { uid } from './utils/id'
+import { shuffleArray } from './utils/shuffle'
 
 export const TEAM_COLORS = [
   '#ff5470', '#2dd4bf', '#facc15', '#60a5fa',
@@ -31,6 +32,7 @@ export function createEmptyQuiz(name = 'Nuevo concurso') {
     },
     settings: {
       turnMode: 'auto',
+      orderMode: 'fijo', // 'fijo' | 'aleatorio'
       reboundPolicy: 'full', // 'full' | 'fixed' | 'percent'
       reboundFixedAmount: 20,
       reboundPercent: 20,
@@ -137,12 +139,16 @@ export function createInitialGameState(quiz) {
   quiz.questions.forEach((q) => {
     questionsState[q.id] = { status: 'disponible', respondidaPor: null, puntosOtorgados: 0 }
   })
+  const orderMode = quiz.settings?.orderMode || 'fijo'
+  const questionIds = quiz.questions.map((q) => q.id)
   return {
     quizId: quiz.id,
     quizName: quiz.name,
     teams,
     turnOrder: teams.map((t) => t.id),
     turnMode: quiz.settings?.turnMode || 'auto',
+    orderMode,
+    tileOrder: orderMode === 'aleatorio' ? shuffleArray(questionIds) : questionIds,
     activeTeamId: teams[0]?.id || null,
     activeTeamIndex: 0,
     questionsState,

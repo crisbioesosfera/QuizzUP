@@ -1,5 +1,6 @@
 // Reducer puro para el estado de una partida en curso.
 // Todas las acciones registran una entrada en history para poder deshacer.
+import { shuffleArray } from '../utils/shuffle'
 
 function cloneState(state) {
   return JSON.parse(JSON.stringify(state))
@@ -215,6 +216,9 @@ export function gameReducer(state, action) {
       next.finished = false
       next.activeTeamId = next.turnOrder[0]
       next.startedAt = Date.now()
+      if (next.orderMode === 'aleatorio') {
+        next.tileOrder = shuffleArray(next.tileOrder)
+      }
       return next
     }
 

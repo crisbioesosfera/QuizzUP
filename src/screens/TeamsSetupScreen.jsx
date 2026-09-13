@@ -123,6 +123,23 @@ export default function TeamsSetupScreen({ quizId, onBack, onBackHome, onStartGa
       </div>
 
       <div className="card mb-3">
+        <h3>Orden de las preguntas en el panel</h3>
+        <div className="flex-gap">
+          <button className={`btn ${quiz.settings.orderMode !== 'aleatorio' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => updateSettings({ orderMode: 'fijo' })}>
+            🔢 Orden fijo (el del editor)
+          </button>
+          <button className={`btn ${quiz.settings.orderMode === 'aleatorio' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => updateSettings({ orderMode: 'aleatorio' })}>
+            🔀 Orden aleatorio
+          </button>
+        </div>
+        <p className="muted mt-1">
+          {quiz.settings.orderMode === 'aleatorio'
+            ? 'Las preguntas se reparten en las casillas del panel en un orden distinto cada partida.'
+            : 'Las casillas del panel siguen el mismo orden en el que aparecen en el editor.'}
+        </p>
+      </div>
+
+      <div className="card mb-3">
         <h3>Rebote: puntuación al pasar a otro equipo</h3>
         <div className="flex-gap">
           <button className={`btn ${quiz.settings.reboundPolicy === 'full' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => updateSettings({ reboundPolicy: 'full' })}>

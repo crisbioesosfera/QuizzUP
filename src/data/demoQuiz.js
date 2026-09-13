@@ -172,6 +172,7 @@ export function buildDemoQuiz() {
     },
     settings: {
       turnMode: 'auto',
+      orderMode: 'fijo',
       reboundPolicy: 'full',
       reboundFixedAmount: 20,
       reboundPercent: 20,

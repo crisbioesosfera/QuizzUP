@@ -12,7 +12,7 @@ function computeEffectivePoints(basePoints, reboundCount, settings) {
   return Math.round(basePoints)
 }
 
-export default function QuestionPlayScreen({ quiz, question, gameState, dispatch, onBack }) {
+export default function QuestionPlayScreen({ quiz, question, tileNumber, gameState, dispatch, onBack }) {
   const [revealed, setRevealed] = useState(false)
   const [showPartial, setShowPartial] = useState(false)
   const [confirmClose, setConfirmClose] = useState(false)
@@ -88,7 +88,7 @@ export default function QuestionPlayScreen({ quiz, question, gameState, dispatch
     <div className="question-screen">
       <div className="question-top">
         <div className="question-meta">
-          <span className="badge">Pregunta {question.orden}</span>
+          <span className="badge">Pregunta {tileNumber ?? question.orden}</span>
           {question.categoria && <span className="badge">{question.categoria}</span>}
           {question.dificultad && <span className="badge">{question.dificultad}</span>}
           <span className="badge badge-success">{question.puntosMaximos} pts</span>
