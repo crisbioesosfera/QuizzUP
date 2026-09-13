@@ -35,6 +35,9 @@ export default function QuestionPlayScreen({ quiz, question, tileNumber, gameSta
   const cincuentaDisabled = comodines.cincuenta <= 0 || answering.fiftyFiftyActive || question.tipo !== 'test' || incorrectCount < 2
   const cambiarDisabled = comodines.cambiar <= 0 || !sinPuntuarAun || otrasDisponibles.length === 0
 
+  const puntosConRebote = computeEffectivePoints(question.puntosMaximos, answering.reboundCount, quiz.settings)
+  const puntosEnJuego = answering.doubleTeamId === answeringTeam?.id ? puntosConRebote * 2 : puntosConRebote
+
   function activateDouble() {
     dispatch({ type: 'ACTIVATE_DOUBLE', teamId: answeringTeam.id })
     sounds.click()
@@ -195,8 +198,11 @@ export default function QuestionPlayScreen({ quiz, question, tileNumber, gameSta
 
       <div className="question-body">
         <div className="points-display">
-          {answering.doubleTeamId === answeringTeam?.id ? question.puntosMaximos * 2 : question.puntosMaximos}
-          <span className="points-display-label">PUNTOS</span>
+          {puntosEnJuego !== question.puntosMaximos && <span className="points-display-original">{question.puntosMaximos}</span>}
+          {puntosEnJuego}
+          <span className="points-display-label">
+            PUNTOS{answering.reboundCount > 0 ? ' · REBOTE' : ''}
+          </span>
         </div>
         <div className="question-statement">{question.enunciado}</div>
         {question.imagen && question.tipo !== 'imagen' && <img src={question.imagen} alt="" className="question-image" />}
