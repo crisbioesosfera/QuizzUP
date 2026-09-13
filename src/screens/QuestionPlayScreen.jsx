@@ -56,13 +56,14 @@ export default function QuestionPlayScreen({ quiz, question, tileNumber, gameSta
   }
 
   function award(points, kind) {
-    const effective = computeEffectivePoints(points, answering.reboundCount, quiz.settings)
-    dispatch({ type: 'AWARD_POINTS', questionId: question.id, teamId: answeringTeam.id, points: effective, kind })
+    // El descuento por rebote ya se aplicó al calcular la base (puntosConRebote):
+    // aquí solo se dobla si procede (lo hace el reducer según doubleTeamId).
+    dispatch({ type: 'AWARD_POINTS', questionId: question.id, teamId: answeringTeam.id, points, kind })
     sounds.correct()
   }
 
   function handleCorrect() {
-    award(question.puntosMaximos, 'correcta')
+    award(puntosConRebote, 'correcta')
     dispatch({
       type: 'CLOSE_QUESTION',
       questionId: question.id,
@@ -246,7 +247,8 @@ export default function QuestionPlayScreen({ quiz, question, tileNumber, gameSta
 
       {showPartial && (
         <PartialPointsModal
-          puntosMaximos={question.puntosMaximos}
+          puntosMaximos={puntosConRebote}
+          puntosOriginales={question.puntosMaximos}
           puntosParciales={question.puntosParciales}
           onConfirm={handlePartialConfirm}
           onCancel={() => setShowPartial(false)}

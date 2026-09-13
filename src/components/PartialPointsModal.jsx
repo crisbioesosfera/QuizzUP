@@ -1,12 +1,21 @@
 import { useState } from 'react'
 import Modal from './Modal'
 
-export default function PartialPointsModal({ puntosMaximos, puntosParciales, onConfirm, onCancel }) {
+export default function PartialPointsModal({ puntosMaximos, puntosOriginales, puntosParciales, onConfirm, onCancel }) {
   const [manual, setManual] = useState('')
+  const hayDescuento = puntosOriginales != null && puntosOriginales !== puntosMaximos
 
   return (
     <Modal title="Puntuación parcial" onClose={onCancel}>
-      <p>Puntos máximos de la pregunta: <strong>{puntosMaximos}</strong></p>
+      <p>
+        Puntos en juego para esta pregunta: <strong>{puntosMaximos}</strong>
+        {hayDescuento && (
+          <>
+            {' '}
+            (<s>{puntosOriginales}</s> por el rebote)
+          </>
+        )}
+      </p>
       <label>Botones rápidos</label>
       <div className="flex-gap mb-2">
         {(puntosParciales || []).map((pct) => (
