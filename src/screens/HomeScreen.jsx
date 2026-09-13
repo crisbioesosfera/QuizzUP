@@ -88,8 +88,11 @@ export default function HomeScreen({ onEditQuiz, onConfigureTeams, onContinueGam
   return (
     <div className="container">
       <header className="home-header">
-        <h1 className="brand">🏆 Concurso por Equipos</h1>
-        <p>Organiza concursos de preguntas en directo, al estilo de un programa de televisión.</p>
+        <div className="brand-badge">🏆</div>
+        <h1 className="brand">
+          Quizz<span className="brand-accent">UP</span>
+        </h1>
+        <p className="brand-tagline">Concursos de preguntas por equipos, en directo y al estilo de un programa de televisión.</p>
       </header>
 
       <div className="card">
