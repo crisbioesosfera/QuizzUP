@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react'
 
-export default function QuestionPlayer({ question, revealed, fiftyFiftyActive }) {
+export default function QuestionPlayer({ question, revealed, fiftyFiftyActive, onSelectTestOption }) {
   switch (question.tipo) {
     case 'test':
-      return <TestPlayer question={question} revealed={revealed} fiftyFiftyActive={fiftyFiftyActive} />
+      return <TestPlayer question={question} revealed={revealed} fiftyFiftyActive={fiftyFiftyActive} onSelectOption={onSelectTestOption} />
     case 'vf':
       return <VfPlayer question={question} revealed={revealed} />
     case 'hueco':
@@ -33,7 +33,8 @@ function shuffle(arr, seed) {
 }
 
 // ---------- Tipo test ----------
-function TestPlayer({ question, revealed, fiftyFiftyActive }) {
+function TestPlayer({ question, revealed, fiftyFiftyActive, onSelectOption }) {
+  const [selectedId, setSelectedId] = useState(null)
   const opciones = useMemo(() => {
     let opts = question.mezclar ? shuffle(question.opciones, question.id.length + question.opciones.length) : question.opciones
     if (fiftyFiftyActive) {
@@ -43,14 +44,28 @@ function TestPlayer({ question, revealed, fiftyFiftyActive }) {
     }
     return opts
   }, [question, fiftyFiftyActive])
+
+  function handleClick(o) {
+    if (revealed || !onSelectOption || selectedId) return
+    setSelectedId(o.id)
+    onSelectOption(o.id)
+  }
+
   return (
     <div className="options-grid">
       {opciones.map((o) => {
         const isCorrect = question.respuestasCorrectas.includes(o.id)
-        const cls = revealed ? (isCorrect ? 'correct-reveal' : 'wrong-reveal') : ''
+        let cls = ''
+        if (revealed) cls = isCorrect ? 'correct-reveal' : 'wrong-reveal'
+        else if (selectedId === o.id) cls = isCorrect ? 'correct-reveal' : 'wrong-reveal'
         return (
-          <div key={o.id} className={`option-tile ${cls}`}>
-            {o.texto} {revealed && isCorrect ? '✅' : ''}
+          <div
+            key={o.id}
+            className={`option-tile ${cls} ${onSelectOption ? 'option-clickable' : ''}`}
+            onClick={() => handleClick(o)}
+          >
+            {o.texto} {(revealed || selectedId === o.id) && isCorrect ? '✅' : ''}
+            {selectedId === o.id && !isCorrect && ' ❌'}
           </div>
         )
       })}

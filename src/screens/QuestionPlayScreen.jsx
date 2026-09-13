@@ -74,6 +74,17 @@ export default function QuestionPlayScreen({ quiz, question, tileNumber, gameSta
     award(points, 'parcial')
   }
 
+  // Al pulsar directamente una opción en preguntas tipo test: si es la
+  // correcta, se da por correcta; si no, se marca incorrecta (y encadena
+  // rebote/cierre igual que el botón "Respuesta incorrecta").
+  function handleSelectTestOption(optionId) {
+    if (question.respuestasCorrectas.includes(optionId)) {
+      handleCorrect()
+    } else {
+      handleIncorrect()
+    }
+  }
+
   function nextAutoReboundTeam() {
     const order = gameState.turnOrder
     const currentIdx = order.indexOf(answering.answeringTeamId)
@@ -183,9 +194,19 @@ export default function QuestionPlayScreen({ quiz, question, tileNumber, gameSta
       </div>
 
       <div className="question-body">
+        <div className="points-display">
+          {answering.doubleTeamId === answeringTeam?.id ? question.puntosMaximos * 2 : question.puntosMaximos}
+          <span className="points-display-label">PUNTOS</span>
+        </div>
         <div className="question-statement">{question.enunciado}</div>
         {question.imagen && question.tipo !== 'imagen' && <img src={question.imagen} alt="" className="question-image" />}
-        <QuestionPlayer question={question} revealed={revealed} fiftyFiftyActive={answering.fiftyFiftyActive} />
+        <QuestionPlayer
+          key={answering.attemptedTeamIds.length}
+          question={question}
+          revealed={revealed}
+          fiftyFiftyActive={answering.fiftyFiftyActive}
+          onSelectTestOption={handleSelectTestOption}
+        />
         {revealed && question.explicacion && (
           <div className="reveal-box">
             <strong>Explicación:</strong> {question.explicacion}
