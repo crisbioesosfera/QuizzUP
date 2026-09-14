@@ -567,7 +567,7 @@ textarea { resize: vertical; min-height: 70px; }
 .question-tile.disponible { background: linear-gradient(150deg, #5443b8, #2b1a63); }
 .question-tile.abierta { background: linear-gradient(150deg, #ffe27a, var(--accent-dim)); color: #241300; box-shadow: 0 1px 0 rgba(255,255,255,0.4) inset, 0 0 0 3px rgba(255,204,51,0.5); animation: pulseTile 1.4s infinite; }
 .question-tile.correcta { background: linear-gradient(150deg, #6ee7a8, #16a34a); cursor: default; }
-.question-tile.fallida { background: linear-gradient(150deg, #7c8798, #374151); cursor: default; opacity: 0.85; }
+.question-tile.fallida { background: linear-gradient(150deg, #f87171, #b91c1c); cursor: default; opacity: 0.9; }
 .question-tile.rebote { background: linear-gradient(150deg, #7db8ff, #2563eb); cursor: default; }
 @keyframes pulseTile {
   0%, 100% { box-shadow: 0 1px 0 rgba(255,255,255,0.4) inset, 0 0 0 3px rgba(255,204,51,0.5), 0 0 0 rgba(255,204,51,0); }

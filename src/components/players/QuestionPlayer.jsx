@@ -13,9 +13,9 @@ export default function QuestionPlayer({ question, revealed, fiftyFiftyActive, o
     case 'imagen':
       return <ImagenPlayer question={question} revealed={revealed} onCheck={onCheckImage} />
     case 'orden':
-      return <OrdenPlayer question={question} revealed={revealed} />
+      return <OrdenPlayer question={question} revealed={revealed} onCheck={onCheckTest} />
     case 'relaciona':
-      return <RelacionaPlayer question={question} revealed={revealed} />
+      return <RelacionaPlayer question={question} revealed={revealed} onCheck={onCheckTest} />
     default:
       return null
   }
@@ -88,7 +88,9 @@ function TestPlayerMultiple({ question, revealed, opciones, onCheck }) {
   const [selectedIds, setSelectedIds] = useState(new Set())
   const [checked, setChecked] = useState(null) // null | true | false
   const totalCorrectas = question.respuestasCorrectas.length
-  const correctasSeleccionadas = [...selectedIds].filter((id) => question.respuestasCorrectas.includes(id)).length
+  // Solo cuenta cuántas se han marcado en total, no cuántas son correctas:
+  // decirlo delataría la respuesta antes de pulsar "Comprobar".
+  const numSeleccionadas = selectedIds.size
 
   function toggle(id) {
     if (revealed || checked !== null) return
@@ -133,7 +135,7 @@ function TestPlayerMultiple({ question, revealed, opciones, onCheck }) {
       {onCheck && checked === null && (
         <div className="flex-gap mt-2" style={{ justifyContent: 'center', alignItems: 'center' }}>
           <span className="badge badge-success">
-            {correctasSeleccionadas}/{totalCorrectas} correctas seleccionadas
+            {numSeleccionadas}/{totalCorrectas} seleccionadas
           </span>
           <button type="button" className="btn btn-info" disabled={selectedIds.size === 0} onClick={comprobar}>
             ✅ Comprobar
@@ -278,33 +280,33 @@ function ImagenPlayer({ question, revealed, onCheck }) {
 }
 
 // ---------- Ordena los elementos ----------
-function OrdenPlayer({ question, revealed }) {
+function OrdenPlayer({ question, revealed, onCheck }) {
   const initial = useMemo(() => shuffle(question.elementos, question.id.length + 3), [question])
   const [items, setItems] = useState(initial)
   const [resultado, setResultado] = useState(null) // null | true | false
   const [dragIdx, setDragIdx] = useState(null)
 
   function onDrop(targetIdx) {
-    if (dragIdx === null || dragIdx === targetIdx) return
+    if (dragIdx === null || dragIdx === targetIdx || resultado !== null) return
     const copy = items.slice()
     const [moved] = copy.splice(dragIdx, 1)
     copy.splice(targetIdx, 0, moved)
     setItems(copy)
-    setResultado(null)
   }
 
   function move(i, dir) {
+    if (resultado !== null) return
     const j = i + dir
     if (j < 0 || j >= items.length) return
     const copy = items.slice()
     ;[copy[i], copy[j]] = [copy[j], copy[i]]
     setItems(copy)
-    setResultado(null)
   }
 
   function comprobar() {
     const esCorrecto = items.every((it, i) => it.id === question.elementos[i].id)
     setResultado(esCorrecto)
+    onCheck?.(esCorrecto)
   }
 
   return (
@@ -314,7 +316,7 @@ function OrdenPlayer({ question, revealed }) {
           <div
             key={it.id}
             className={`order-item ${dragIdx === i ? 'dragging' : ''}`}
-            draggable
+            draggable={resultado === null}
             onDragStart={() => setDragIdx(i)}
             onDragOver={(e) => e.preventDefault()}
             onDrop={() => onDrop(i)}
@@ -322,15 +324,17 @@ function OrdenPlayer({ question, revealed }) {
             <span className="drag-handle">⠿</span>
             <span>{it.texto}</span>
             <div className="order-controls">
-              <button type="button" className="icon-btn" onClick={() => move(i, -1)}>⬆️</button>
-              <button type="button" className="icon-btn" onClick={() => move(i, 1)}>⬇️</button>
+              <button type="button" className="icon-btn" disabled={resultado !== null} onClick={() => move(i, -1)}>⬆️</button>
+              <button type="button" className="icon-btn" disabled={resultado !== null} onClick={() => move(i, 1)}>⬇️</button>
             </div>
           </div>
         ))}
       </div>
-      <div className="flex-gap mt-2" style={{ justifyContent: 'center' }}>
-        <button type="button" className="btn btn-info" onClick={comprobar}>✅ Comprobar</button>
-      </div>
+      {resultado === null && (
+        <div className="flex-gap mt-2" style={{ justifyContent: 'center' }}>
+          <button type="button" className="btn btn-info" onClick={comprobar}>✅ Comprobar</button>
+        </div>
+      )}
       {resultado !== null && (
         <p className={resultado ? 'result-ok' : 'result-fail'}>{resultado ? '✅ ¡Correcto!' : '❌ Incorrecto.'}</p>
       )}
@@ -344,7 +348,7 @@ function OrdenPlayer({ question, revealed }) {
 }
 
 // ---------- Relaciona ----------
-function RelacionaPlayer({ question, revealed }) {
+function RelacionaPlayer({ question, revealed, onCheck }) {
   const derechaShuffled = useMemo(() => shuffle(question.pares, question.id.length + 5), [question])
   const [selectedLeft, setSelectedLeft] = useState(null)
   const [matches, setMatches] = useState({}) // izqId -> derId
@@ -365,6 +369,7 @@ function RelacionaPlayer({ question, revealed }) {
     if (!completo) return
     const esCorrecto = question.pares.every((p) => matches[p.id] === p.id)
     setResultado(esCorrecto)
+    onCheck?.(esCorrecto)
   }
 
   function reiniciar() {
