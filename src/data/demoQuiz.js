@@ -112,8 +112,8 @@ export function buildDemoQuiz() {
         puntosMaximos: 100,
         puntosParciales: [25, 50, 75],
         tiempoSegundos: 30,
-        permitirRebote: false,
-        maximoRebotes: 0,
+        permitirRebote: true,
+        maximoRebotes: 2,
         elementos: [
           { id: uid('el'), texto: '2' },
           { id: uid('el'), texto: '8' },
@@ -133,8 +133,8 @@ export function buildDemoQuiz() {
         puntosMaximos: 100,
         puntosParciales: [25, 50, 75],
         tiempoSegundos: null,
-        permitirRebote: false,
-        maximoRebotes: 0,
+        permitirRebote: true,
+        maximoRebotes: 2,
         pares: [
           { id: uid('par'), izquierda: 'Dog', derecha: 'Perro' },
           { id: uid('par'), izquierda: 'Cat', derecha: 'Gato' },

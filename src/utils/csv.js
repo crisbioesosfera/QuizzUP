@@ -334,12 +334,12 @@ export const SAMPLE_CSV_ROWS = [
   [
     '5', 'Matemáticas', 'orden', 'Ordena estos números de menor a mayor.',
     '2', '15', '8', '23', '', '', '', '', 'Orden: 2, 8, 15, 23.',
-    '100', '25|50|75', '30', 'FALSE', '0', '', 'media',
+    '100', '25|50|75', '30', 'TRUE', '2', '', 'media',
   ],
   [
     '6', 'Inglés', 'relaciona', 'Relaciona cada palabra en inglés con su traducción.',
     'Dog', 'Cat', 'House', 'Book', '', '', '', 'Perro|Gato|Casa|Libro',
-    'Vocabulario básico en inglés.', '100', '25|50|75', '', 'FALSE', '0', '', 'facil',
+    'Vocabulario básico en inglés.', '100', '25|50|75', '', 'TRUE', '2', '', 'facil',
   ],
 ]
 
