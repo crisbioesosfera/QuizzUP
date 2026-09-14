@@ -38,6 +38,8 @@ export function gameReducer(state, action) {
         anyPointsAwarded: false,
         doubleTeamId: null,
         fiftyFiftyActive: false,
+        segundaTeamId: null,
+        aseguradoTeamId: null,
       }
       return next
     }
@@ -55,6 +57,8 @@ export function gameReducer(state, action) {
         anyPointsAwarded: false,
         doubleTeamId: null,
         fiftyFiftyActive: false,
+        segundaTeamId: null,
+        aseguradoTeamId: null,
       }
       return next
     }
@@ -188,6 +192,64 @@ export function gameReducer(state, action) {
       return next
     }
 
+    case 'ACTIVATE_SEGUNDA': {
+      // "Segunda oportunidad": si falla, repite sin que haya rebote.
+      const { teamId } = action
+      const next = cloneState(state)
+      if (!next.currentAnswering || next.currentAnswering.answeringTeamId !== teamId) return state
+      const teamIdx = findTeamIndex(next, teamId)
+      if (teamIdx === -1 || (next.teams[teamIdx].comodines?.segunda || 0) <= 0) return state
+      next.teams[teamIdx].comodines.segunda -= 1
+      next.currentAnswering.segundaTeamId = teamId
+      pushHistory(next, { type: 'ACTIVATE_SEGUNDA', teamId, questionId: next.currentQuestionId })
+      return next
+    }
+
+    case 'CONSUME_SEGUNDA': {
+      // Se gasta la segunda oportunidad tras el primer fallo: el equipo repite.
+      const { teamId } = action
+      const next = cloneState(state)
+      if (next.currentAnswering && next.currentAnswering.segundaTeamId === teamId) {
+        next.currentAnswering.segundaTeamId = null
+      }
+      return next
+    }
+
+    case 'ACTIVATE_ASEGURADO': {
+      // "Puntos asegurados": si falla, se queda con el 25% de la pregunta.
+      const { teamId } = action
+      const next = cloneState(state)
+      if (!next.currentAnswering || next.currentAnswering.answeringTeamId !== teamId) return state
+      const teamIdx = findTeamIndex(next, teamId)
+      if (teamIdx === -1 || (next.teams[teamIdx].comodines?.asegurado || 0) <= 0) return state
+      next.teams[teamIdx].comodines.asegurado -= 1
+      next.currentAnswering.aseguradoTeamId = teamId
+      pushHistory(next, { type: 'ACTIVATE_ASEGURADO', teamId, questionId: next.currentQuestionId })
+      return next
+    }
+
+    case 'CONSUME_ASEGURADO': {
+      const { teamId } = action
+      const next = cloneState(state)
+      if (next.currentAnswering && next.currentAnswering.aseguradoTeamId === teamId) {
+        next.currentAnswering.aseguradoTeamId = null
+      }
+      return next
+    }
+
+    case 'USE_WILDCARD': {
+      // Comodín genérico que solo gasta una unidad, sin más efecto en el
+      // estado de la partida (el efecto visual lo gestiona la pantalla de
+      // pregunta): "Coloca una pieza" y "Revela una pareja".
+      const { teamId, key } = action
+      const next = cloneState(state)
+      const teamIdx = findTeamIndex(next, teamId)
+      if (teamIdx === -1 || (next.teams[teamIdx].comodines?.[key] || 0) <= 0) return state
+      next.teams[teamIdx].comodines[key] -= 1
+      pushHistory(next, { type: 'USE_WILDCARD', teamId, key, questionId: next.currentQuestionId })
+      return next
+    }
+
     case 'SWAP_QUESTION': {
       // "Cambiar pregunta": devuelve la pregunta actual al panel y abre otra al azar.
       const { teamId, oldQuestionId, newQuestionId } = action
@@ -207,6 +269,8 @@ export function gameReducer(state, action) {
         anyPointsAwarded: false,
         doubleTeamId: null,
         fiftyFiftyActive: false,
+        segundaTeamId: null,
+        aseguradoTeamId: null,
       }
       pushHistory(next, { type: 'SWAP_QUESTION', teamId, oldQuestionId, newQuestionId })
       return next
@@ -277,6 +341,17 @@ export function gameReducer(state, action) {
         const teamIdx = findTeamIndex(next, last.teamId)
         if (teamIdx !== -1) next.teams[teamIdx].comodines.cincuenta += 1
         if (next.currentAnswering) next.currentAnswering.fiftyFiftyActive = false
+      } else if (last.type === 'ACTIVATE_SEGUNDA') {
+        const teamIdx = findTeamIndex(next, last.teamId)
+        if (teamIdx !== -1) next.teams[teamIdx].comodines.segunda += 1
+        if (next.currentAnswering) next.currentAnswering.segundaTeamId = null
+      } else if (last.type === 'ACTIVATE_ASEGURADO') {
+        const teamIdx = findTeamIndex(next, last.teamId)
+        if (teamIdx !== -1) next.teams[teamIdx].comodines.asegurado += 1
+        if (next.currentAnswering) next.currentAnswering.aseguradoTeamId = null
+      } else if (last.type === 'USE_WILDCARD') {
+        const teamIdx = findTeamIndex(next, last.teamId)
+        if (teamIdx !== -1) next.teams[teamIdx].comodines[last.key] += 1
       } else if (last.type === 'SWAP_QUESTION') {
         const teamIdx = findTeamIndex(next, last.teamId)
         if (teamIdx !== -1) next.teams[teamIdx].comodines.cambiar += 1
@@ -291,6 +366,8 @@ export function gameReducer(state, action) {
           anyPointsAwarded: false,
           doubleTeamId: null,
           fiftyFiftyActive: false,
+          segundaTeamId: null,
+          aseguradoTeamId: null,
         }
       }
       return next

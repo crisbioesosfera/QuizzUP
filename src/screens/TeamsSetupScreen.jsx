@@ -1,9 +1,7 @@
 import { useState } from 'react'
 import { getQuiz, saveQuiz, getGame } from '../utils/storage'
-import { createTeam, TEAM_COLORS, TEAM_ICONS, WILDCARD_INFO } from '../models'
+import { createTeam, TEAM_COLORS, TEAM_ICONS, WILDCARD_INFO, DEFAULT_WILDCARD_COUNTS } from '../models'
 import ConfirmDialog from '../components/ConfirmDialog'
-
-const DEFAULT_WILDCARDS = { doble: 1, cincuenta: 1, cambiar: 1 }
 
 export default function TeamsSetupScreen({ quizId, onBack, onBackHome, onStartGame }) {
   const [quiz, setQuiz] = useState(() => getQuiz(quizId))
@@ -29,7 +27,7 @@ export default function TeamsSetupScreen({ quizId, onBack, onBackHome, onStartGa
   }
 
   function updateWildcard(key, value) {
-    const current = quiz.settings.wildcards || DEFAULT_WILDCARDS
+    const current = { ...DEFAULT_WILDCARD_COUNTS, ...(quiz.settings.wildcards || {}) }
     updateSettings({ wildcards: { ...current, [key]: Math.max(0, value) } })
   }
 
@@ -151,7 +149,7 @@ export default function TeamsSetupScreen({ quizId, onBack, onBackHome, onStartGa
         <p className="muted">Elige qué comodines pueden usar los equipos y cuántas veces cada uno (igual para todos).</p>
         <div className="field-row">
           {Object.entries(WILDCARD_INFO).map(([key, info]) => {
-            const value = (quiz.settings.wildcards || DEFAULT_WILDCARDS)[key]
+            const value = { ...DEFAULT_WILDCARD_COUNTS, ...(quiz.settings.wildcards || {}) }[key]
             const enabled = value > 0
             return (
               <div className="field" key={key}>

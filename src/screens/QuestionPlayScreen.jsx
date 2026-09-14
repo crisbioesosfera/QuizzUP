@@ -18,6 +18,9 @@ export default function QuestionPlayScreen({ quiz, question, tileNumber, gameSta
   const [showPartial, setShowPartial] = useState(false)
   const [confirmClose, setConfirmClose] = useState(false)
   const [showReboundPicker, setShowReboundPicker] = useState(false)
+  const [retryNonce, setRetryNonce] = useState(0)
+  const [autoPlaceSignal, setAutoPlaceSignal] = useState(0)
+  const [autoPairSignal, setAutoPairSignal] = useState(0)
 
   const answering = gameState.currentAnswering
   const answeringTeam = gameState.teams.find((t) => t.id === answering.answeringTeamId)
@@ -27,14 +30,21 @@ export default function QuestionPlayScreen({ quiz, question, tileNumber, gameSta
   // Verdadero/falso no admite rebote: solo hay dos opciones, no tiene sentido pasarla a otro equipo.
   const reboundDisabled = question.tipo === 'vf' || !question.permitirRebote || availableForRebound.length === 0 || reboundLimitReached
 
-  const comodines = answeringTeam?.comodines || { doble: 0, cincuenta: 0, cambiar: 0 }
+  const comodines = answeringTeam?.comodines || {}
+  const numComodin = (key) => comodines[key] || 0
   const sinPuntuarAun = answering.pointsAwardedThisQuestion === 0
   const incorrectCount = question.tipo === 'test' ? question.opciones.length - question.respuestasCorrectas.length : 0
   const otrasDisponibles = quiz.questions.filter((q) => q.id !== question.id && gameState.questionsState[q.id]?.status === 'disponible')
+  const hayElementoMalColocado = question.tipo === 'orden'
+  const hayParejaSinAsignar = question.tipo === 'relaciona'
 
-  const dobleDisabled = comodines.doble <= 0 || !!answering.doubleTeamId || !sinPuntuarAun
-  const cincuentaDisabled = comodines.cincuenta <= 0 || answering.fiftyFiftyActive || question.tipo !== 'test' || incorrectCount < 2
-  const cambiarDisabled = comodines.cambiar <= 0 || !sinPuntuarAun || otrasDisponibles.length === 0
+  const dobleDisabled = numComodin('doble') <= 0 || !!answering.doubleTeamId || !sinPuntuarAun
+  const cincuentaDisabled = numComodin('cincuenta') <= 0 || answering.fiftyFiftyActive || question.tipo !== 'test' || incorrectCount < 2
+  const cambiarDisabled = numComodin('cambiar') <= 0 || !sinPuntuarAun || otrasDisponibles.length === 0
+  const segundaDisabled = numComodin('segunda') <= 0 || !!answering.segundaTeamId
+  const aseguradoDisabled = numComodin('asegurado') <= 0 || !!answering.aseguradoTeamId
+  const piezaDisabled = numComodin('pieza') <= 0 || !hayElementoMalColocado
+  const parejaDisabled = numComodin('pareja') <= 0 || !hayParejaSinAsignar
 
   const puntosConRebote = computeEffectivePoints(question.puntosMaximos, answering.reboundCount, quiz.settings)
   const puntosEnJuego = answering.doubleTeamId === answeringTeam?.id ? puntosConRebote * 2 : puntosConRebote
@@ -49,7 +59,39 @@ export default function QuestionPlayScreen({ quiz, question, tileNumber, gameSta
     sounds.click()
   }
 
-  function handleSwapQuestion() {
+  function activateSegunda() {
+    dispatch({ type: 'ACTIVATE_SEGUNDA', teamId: answeringTeam.id })
+    sounds.click()
+  }
+
+  function activateAsegurado() {
+    dispatch({ type: 'ACTIVATE_ASEGURADO', teamId: answeringTeam.id })
+    sounds.click()
+  }
+
+  function usarPieza() {
+    dispatch({ type: 'USE_WILDCARD', teamId: answeringTeam.id, key: 'pieza' })
+    setAutoPlaceSignal((n) => n + 1)
+    sounds.click()
+  }
+
+  function usarPareja() {
+    dispatch({ type: 'USE_WILDCARD', teamId: answeringTeam.id, key: 'pareja' })
+    setAutoPairSignal((n) => n + 1)
+    sounds.click()
+  }
+
+  const WILDCARD_HANDLERS = {
+    doble: { disabled: dobleDisabled, onClick: activateDouble, cls: 'btn-warn' },
+    cincuenta: { disabled: cincuentaDisabled, onClick: useFiftyFifty, cls: 'btn-info' },
+    cambiar: { disabled: cambiarDisabled, onClick: handleSwapQuestionClick, cls: '' },
+    segunda: { disabled: segundaDisabled, onClick: activateSegunda, cls: 'btn-warn' },
+    asegurado: { disabled: aseguradoDisabled, onClick: activateAsegurado, cls: 'btn-info' },
+    pieza: { disabled: piezaDisabled, onClick: usarPieza, cls: '' },
+    pareja: { disabled: parejaDisabled, onClick: usarPareja, cls: '' },
+  }
+
+  function handleSwapQuestionClick() {
     const elegida = otrasDisponibles[Math.floor(Math.random() * otrasDisponibles.length)]
     dispatch({ type: 'SWAP_QUESTION', teamId: answeringTeam.id, oldQuestionId: question.id, newQuestionId: elegida.id })
     setRevealed(false)
@@ -113,21 +155,40 @@ export default function QuestionPlayScreen({ quiz, question, tileNumber, gameSta
   }
 
   function handleIncorrect() {
+    // Segunda oportunidad: se gasta y el mismo equipo repite, sin rebote ni cierre.
+    if (answering.segundaTeamId === answeringTeam.id) {
+      dispatch({ type: 'MARK_INCORRECT', questionId: question.id, teamId: answeringTeam.id, doublePenalty: 0 })
+      dispatch({ type: 'CONSUME_SEGUNDA', teamId: answeringTeam.id })
+      sounds.incorrect()
+      setRevealed(false)
+      setRetryNonce((n) => n + 1)
+      return
+    }
+
     const doublePenalty = answering.doubleTeamId === answeringTeam.id ? question.puntosMaximos : 0
     dispatch({ type: 'MARK_INCORRECT', questionId: question.id, teamId: answeringTeam.id, doublePenalty })
     sounds.incorrect()
+
+    // Puntos asegurados: aunque falle, se lleva el 25% de la pregunta.
+    let puntosSeguro = 0
+    if (answering.aseguradoTeamId === answeringTeam.id) {
+      puntosSeguro = Math.round(puntosConRebote * 0.25)
+      dispatch({ type: 'AWARD_POINTS', questionId: question.id, teamId: answeringTeam.id, points: puntosSeguro, kind: 'asegurado' })
+      dispatch({ type: 'CONSUME_ASEGURADO', teamId: answeringTeam.id })
+    }
+
     // Verdadero/falso: sin rebote posible, se cierra directamente como fallida
     // y se sale al panel, sin pedir confirmación (no hay puntos que perder ni
-    // nadie más a quien preguntar).
+    // nadie más a quien preguntar) — salvo que haya puntos asegurados de por medio.
     if (question.tipo === 'vf') {
-      doClose()
+      doClose(puntosSeguro)
       return
     }
     // Encadena directamente el siguiente paso lógico: si se puede rebotar, se
     // ofrece a quién (o se rebota solo al siguiente equipo en modo automático);
     // si no queda a quién rebotar, se cierra la pregunta.
     if (reboundDisabled) {
-      handleClose()
+      handleClose(puntosSeguro)
     } else {
       triggerRebound()
     }
@@ -150,8 +211,8 @@ export default function QuestionPlayScreen({ quiz, question, tileNumber, gameSta
     sounds.rebound()
   }
 
-  function doClose() {
-    const points = answering.pointsAwardedThisQuestion
+  function doClose(extraPoints = 0) {
+    const points = answering.pointsAwardedThisQuestion + extraPoints
     dispatch({
       type: 'CLOSE_QUESTION',
       questionId: question.id,
@@ -161,11 +222,11 @@ export default function QuestionPlayScreen({ quiz, question, tileNumber, gameSta
     onBack()
   }
 
-  function handleClose() {
-    if (answering.pointsAwardedThisQuestion === 0) {
+  function handleClose(extraPoints = 0) {
+    if (answering.pointsAwardedThisQuestion + extraPoints === 0) {
       setConfirmClose(true)
     } else {
-      doClose()
+      doClose(extraPoints)
     }
   }
 
@@ -188,6 +249,8 @@ export default function QuestionPlayScreen({ quiz, question, tileNumber, gameSta
       >
         {answeringTeam?.icon} Responde: {answeringTeam?.name}
         {answering.doubleTeamId === answeringTeam?.id && ' · 🎲 ¡DOBLE O NADA!'}
+        {answering.segundaTeamId === answeringTeam?.id && ' · 🔂 Segunda oportunidad activa'}
+        {answering.aseguradoTeamId === answeringTeam?.id && ' · 🛡️ Puntos asegurados'}
       </div>
 
       <div className="flex-gap mt-1" style={{ justifyContent: 'center' }}>
@@ -206,15 +269,16 @@ export default function QuestionPlayScreen({ quiz, question, tileNumber, gameSta
 
       <div className="flex-gap mt-1" style={{ justifyContent: 'center' }}>
         <span className="muted" style={{ alignSelf: 'center' }}>Comodines de {answeringTeam?.name}:</span>
-        <button className="btn btn-sm btn-warn" disabled={dobleDisabled} onClick={activateDouble}>
-          {WILDCARD_INFO.doble.icon} {WILDCARD_INFO.doble.label} ({comodines.doble})
-        </button>
-        <button className="btn btn-sm btn-info" disabled={cincuentaDisabled} onClick={useFiftyFifty}>
-          {WILDCARD_INFO.cincuenta.icon} {WILDCARD_INFO.cincuenta.label} ({comodines.cincuenta})
-        </button>
-        <button className="btn btn-sm" disabled={cambiarDisabled} onClick={handleSwapQuestion}>
-          {WILDCARD_INFO.cambiar.icon} {WILDCARD_INFO.cambiar.label} ({comodines.cambiar})
-        </button>
+        {Object.entries(WILDCARD_INFO)
+          .filter(([, info]) => !info.tipos || info.tipos.includes(question.tipo))
+          .map(([key, info]) => {
+            const h = WILDCARD_HANDLERS[key]
+            return (
+              <button key={key} className={`btn btn-sm ${h.cls}`} disabled={h.disabled} onClick={h.onClick}>
+                {info.icon} {info.label} ({numComodin(key)})
+              </button>
+            )
+          })}
       </div>
 
       <div className="question-body">
@@ -228,10 +292,12 @@ export default function QuestionPlayScreen({ quiz, question, tileNumber, gameSta
         <div className="question-statement">{question.enunciado}</div>
         {question.imagen && question.tipo !== 'imagen' && <img src={question.imagen} alt="" className="question-image" />}
         <QuestionPlayer
-          key={answering.attemptedTeamIds.length}
+          key={`${answering.attemptedTeamIds.length}-${retryNonce}`}
           question={question}
           revealed={revealed}
           fiftyFiftyActive={answering.fiftyFiftyActive}
+          autoPlaceSignal={autoPlaceSignal}
+          autoPairSignal={autoPairSignal}
           onCheckTest={handleCheckTest}
           onCheckImage={handleCheckImage}
         />
@@ -260,7 +326,7 @@ export default function QuestionPlayScreen({ quiz, question, tileNumber, gameSta
             🔁 Rebote
           </button>
         )}
-        <button className="btn btn-ghost" onClick={handleClose}>
+        <button className="btn btn-ghost" onClick={() => handleClose()}>
           🔒 Cerrar pregunta
         </button>
         <button className="btn btn-ghost" onClick={onBack}>

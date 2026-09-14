@@ -37,16 +37,23 @@ export function createEmptyQuiz(name = 'Nuevo concurso') {
       reboundPolicy: 'full', // 'full' | 'fixed' | 'percent'
       reboundFixedAmount: 20,
       reboundPercent: 20,
-      wildcards: { doble: 1, cincuenta: 1, cambiar: 1 },
+      wildcards: { ...DEFAULT_WILDCARD_COUNTS },
     },
   }
 }
 
+// tipos: null = disponible en cualquier tipo de pregunta; si no, solo en esos tipos.
 export const WILDCARD_INFO = {
-  doble: { label: 'Doble o nada', icon: '🎲' },
-  cincuenta: { label: '50/50', icon: '✂️' },
-  cambiar: { label: 'Cambiar pregunta', icon: '🔄' },
+  doble: { label: 'Doble o nada', icon: '🎲', tipos: null },
+  cincuenta: { label: '50/50', icon: '✂️', tipos: ['test'] },
+  cambiar: { label: 'Cambiar pregunta', icon: '🔄', tipos: null },
+  segunda: { label: 'Segunda oportunidad', icon: '🔂', tipos: null },
+  asegurado: { label: 'Puntos asegurados', icon: '🛡️', tipos: null },
+  pieza: { label: 'Coloca una pieza', icon: '🧩', tipos: ['orden'] },
+  pareja: { label: 'Revela una pareja', icon: '🔗', tipos: ['relaciona'] },
 }
+
+export const DEFAULT_WILDCARD_COUNTS = { doble: 1, cincuenta: 1, cambiar: 1, segunda: 1, asegurado: 1, pieza: 1, pareja: 1 }
 
 export function createTeam(index) {
   return {
@@ -142,7 +149,7 @@ export function convertQuestionType(question, nuevoTipo) {
 }
 
 export function createInitialGameState(quiz) {
-  const wildcardCounts = quiz.settings?.wildcards || { doble: 1, cincuenta: 1, cambiar: 1 }
+  const wildcardCounts = { ...DEFAULT_WILDCARD_COUNTS, ...(quiz.settings?.wildcards || {}) }
   const teams = quiz.teamsConfig.teams.map((t) => ({ ...t, score: 0, comodines: { ...wildcardCounts } }))
   const questionsState = {}
   quiz.questions.forEach((q) => {

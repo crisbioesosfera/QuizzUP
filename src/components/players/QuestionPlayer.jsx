@@ -1,6 +1,14 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
-export default function QuestionPlayer({ question, revealed, fiftyFiftyActive, onCheckTest, onCheckImage }) {
+export default function QuestionPlayer({
+  question,
+  revealed,
+  fiftyFiftyActive,
+  autoPlaceSignal,
+  autoPairSignal,
+  onCheckTest,
+  onCheckImage,
+}) {
   switch (question.tipo) {
     case 'test':
       return <TestPlayer question={question} revealed={revealed} fiftyFiftyActive={fiftyFiftyActive} onCheck={onCheckTest} />
@@ -13,9 +21,9 @@ export default function QuestionPlayer({ question, revealed, fiftyFiftyActive, o
     case 'imagen':
       return <ImagenPlayer question={question} revealed={revealed} onCheck={onCheckImage} />
     case 'orden':
-      return <OrdenPlayer question={question} revealed={revealed} onCheck={onCheckTest} />
+      return <OrdenPlayer question={question} revealed={revealed} onCheck={onCheckTest} autoPlaceSignal={autoPlaceSignal} />
     case 'relaciona':
-      return <RelacionaPlayer question={question} revealed={revealed} onCheck={onCheckTest} />
+      return <RelacionaPlayer question={question} revealed={revealed} onCheck={onCheckTest} autoPairSignal={autoPairSignal} />
     default:
       return null
   }
@@ -280,11 +288,31 @@ function ImagenPlayer({ question, revealed, onCheck }) {
 }
 
 // ---------- Ordena los elementos ----------
-function OrdenPlayer({ question, revealed, onCheck }) {
+function OrdenPlayer({ question, revealed, onCheck, autoPlaceSignal }) {
   const initial = useMemo(() => shuffle(question.elementos, question.id.length + 3), [question])
   const [items, setItems] = useState(initial)
   const [resultado, setResultado] = useState(null) // null | true | false
   const [dragIdx, setDragIdx] = useState(null)
+
+  // Comodín "Coloca una pieza": coloca correctamente un elemento mal situado.
+  // Se compara con el último valor visto para no repetirse si el componente
+  // se remonta (rebote) sin que se haya vuelto a pulsar el comodín.
+  const lastAutoPlaceRef = useRef(autoPlaceSignal)
+  useEffect(() => {
+    if (autoPlaceSignal === lastAutoPlaceRef.current) return
+    lastAutoPlaceRef.current = autoPlaceSignal
+    setItems((prev) => {
+      const wrongIdx = prev.findIndex((it, i) => it.id !== question.elementos[i].id)
+      if (wrongIdx === -1) return prev
+      const correcto = question.elementos[wrongIdx]
+      const curIdx = prev.findIndex((it) => it.id === correcto.id)
+      const copy = prev.slice()
+      ;[copy[wrongIdx], copy[curIdx]] = [copy[curIdx], copy[wrongIdx]]
+      return copy
+    })
+    setResultado(null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoPlaceSignal])
 
   function onDrop(targetIdx) {
     if (dragIdx === null || dragIdx === targetIdx || resultado !== null) return
@@ -348,11 +376,24 @@ function OrdenPlayer({ question, revealed, onCheck }) {
 }
 
 // ---------- Relaciona ----------
-function RelacionaPlayer({ question, revealed, onCheck }) {
+function RelacionaPlayer({ question, revealed, onCheck, autoPairSignal }) {
   const derechaShuffled = useMemo(() => shuffle(question.pares, question.id.length + 5), [question])
   const [selectedLeft, setSelectedLeft] = useState(null)
   const [matches, setMatches] = useState({}) // izqId -> derId
   const [resultado, setResultado] = useState(null) // null | true | false
+
+  // Comodín "Revela una pareja": completa correctamente una pareja sin asignar.
+  const lastAutoPairRef = useRef(autoPairSignal)
+  useEffect(() => {
+    if (autoPairSignal === lastAutoPairRef.current) return
+    lastAutoPairRef.current = autoPairSignal
+    setMatches((prev) => {
+      const sinAsignar = question.pares.find((p) => !prev[p.id])
+      if (!sinAsignar) return prev
+      return { ...prev, [sinAsignar.id]: sinAsignar.id }
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoPairSignal])
 
   function clickLeft(par) {
     if (resultado !== null) return
